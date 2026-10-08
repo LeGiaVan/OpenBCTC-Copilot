@@ -1,0 +1,55 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database, Storage & Cache Data
+data/*
+!data/samples/
+!data/samples/.gitkeep
+!data/qdrant_storage/
+data/qdrant_storage/*
+!data/qdrant_storage/.gitkeep
+*.db
+*.sqlite3
+
+# Python Byte-compiled / Optimized
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest / Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.tox
+*.nox
+
+# VS Code / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/*
+!logs/.gitkeep
+
+# Build dirs
+build/
+dist/
+*.egg-info/

@@ -1,0 +1,49 @@
+[project]
+name = "openbctc-copilot"
+version = "0.1.0"
+description = "Enterprise Financial Copilot & Dual-Engine RAG with Visual Grounding"
+readme = "Plan.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Core & Data Models
+    "pydantic>=2.6.0",
+    "pydantic-settings>=2.2.0",
+    
+    # Vector DB & Embeddings
+    "qdrant-client>=1.8.0",
+    "fastembed>=0.2.7",                    # Sparse BM25 + Reranker
+    "sentence-transformers>=3.0.0",        # Dense embedding: BAAI/bge-m3 (multilingual, Vietnamese)
+    "torch>=2.2.0",                        # Backend cho sentence-transformers (CPU mode)
+
+    
+    # Agent Orchestration (Lean LangGraph)
+    "langgraph>=0.0.30",
+    "langchain-core>=0.1.30",
+    
+    # API & Web Server
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "sse-starlette>=2.0.0",
+    
+    # Observability
+    "langfuse>=2.20.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
