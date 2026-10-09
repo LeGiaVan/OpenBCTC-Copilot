@@ -41,6 +41,12 @@ def main() -> None:
         default="data/qdrant_storage",
         help="Đường dẫn lưu trữ Qdrant local hoặc ':memory:'",
     )
+    parser.add_argument(
+        "--qdrant-url",
+        type=str,
+        default=None,
+        help="URL kết nối tới Qdrant server (ví dụ: http://localhost:6333)",
+    )
     parser.add_argument("--company", type=str, default="VNM", help="Mã cổ phiếu")
     parser.add_argument("--year", type=int, default=2025, help="Năm tài chính")
 
@@ -81,8 +87,11 @@ def main() -> None:
     print(f"   -> Độ dài trung bình: {avg_len:.0f} ký tự/chunk (Đã tính Enclosing Bounding Box)")
 
     # 5. Nạp vào Qdrant Hybrid Collection (Dense + Sparse BM25)
-    print(f"\n🧠 [5/5] Khởi tạo & Embed vào Qdrant Hybrid Store ({args.qdrant_path})...")
-    if args.qdrant_path == ":memory:":
+    target_dest = args.qdrant_url if args.qdrant_url else args.qdrant_path
+    print(f"\n🧠 [5/5] Khởi tạo & Embed vào Qdrant Hybrid Store ({target_dest})...")
+    if args.qdrant_url:
+        vec_svc = VectorEngineService(url=args.qdrant_url)
+    elif args.qdrant_path == ":memory:":
         vec_svc = VectorEngineService(url=":memory:")
     else:
         vec_svc = VectorEngineService(path=args.qdrant_path)

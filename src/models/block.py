@@ -21,7 +21,7 @@ class JSONBlock(BaseModel):
     page: int = Field(description="Số trang trong tài liệu PDF gốc (1-indexed)")
     content: str = Field(description="Nội dung văn bản hoặc biểu diễn bảng dạng Markdown của block")
     bbox: list[float] = Field(
-        description="Toạ độ bounding box [ymin, xmin, ymax, xmax] chuẩn hoá từ 0.0 đến 1.0"
+        description="Toạ độ bounding box [xmin, ymin, xmax, ymax] chuẩn hoá từ 0.0 đến 1.0"
     )
     source: str = Field(default="local_ocr", description="Nguồn trích xuất (ví dụ: 'local_ocr', 'pdfplumber')")
     metadata: BlockMetadata = Field(description="Metadata chi tiết về doanh nghiệp và năm")

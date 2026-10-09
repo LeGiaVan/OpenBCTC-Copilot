@@ -238,13 +238,14 @@ flowchart TB
   - Màn hình chia đôi (Split-screen):
     - Cửa sổ trái: Khung hội thoại AI với Markdown, bảng biểu tài chính, các thẻ trích dẫn nguồn.
     - Cửa sổ phải: Trình đọc PDF (PDF.js). Khi người dùng bấm vào một trích dẫn (ví dụ: `[[cite_1]]` - Thuyết minh 12, Trang 24), PDF tự động lật đến trang 24 và vẽ khung chữ nhật bao quanh toạ độ `bbox` tương ứng.
-- [ ] **5.3. Containerization & Orchestration:**
-  - `Dockerfile` multi-stage (tối ưu hóa kích thước, non-root user, cài dependency bằng `uv`).
+- [ ] **5.3. Containerization & Orchestration (Full Docker Stack):**
+  - `Dockerfile`: Multi-stage build (tối ưu hóa kích thước, non-root user, cài dependency bằng `uv`).
   - `docker-compose.yml`:
     - Service `copilot-api`: FastAPI backend.
-    - Service `copilot-ui`: Web frontend (Next.js hoặc Chainlit custom).
-    - Service `qdrant`: Vector database persistent volume.
-    - Service `caddy`: Reverse proxy tự động SSL HTTPS.
+    - Service `copilot-ui`: Web frontend (phục vụ qua Nginx tĩnh).
+    - Service `qdrant`: Vector database (Lưu trữ Embedding).
+    - Service `minio`: Object Storage (Lưu trữ PDF gốc, Markdown, JSON).
+    - Service `postgres`: Relational Database (SQL Engine cho dữ liệu tài chính dạng bảng).
 - [ ] **5.4. CI/CD & Automated Evaluation Gate:**
   - GitHub Actions chạy `ruff` + `pytest`.
   - Chạy Evaluation Gate trên Golden Dataset: Nếu Faithfulness < 0.90 hoặc SQL Accuracy < 0.98 $\rightarrow$ Chặn merge PR.

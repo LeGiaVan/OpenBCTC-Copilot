@@ -19,11 +19,19 @@ dependencies = [
     # Agent Orchestration (Lean LangGraph)
     "langgraph>=0.0.30",
     "langchain-core>=0.1.30",
+    "langchain-openai>=0.2.0",
     
     # API & Web Server
     "fastapi>=0.110.0",
     "uvicorn>=0.28.0",
     "sse-starlette>=2.0.0",
+    
+    # Cloud-Native Storage (MongoDB, MinIO & Postgres)
+    "minio>=7.2.5",
+    "psycopg2-binary>=2.9.9",
+    "sqlalchemy>=2.0.0",
+    "pymongo>=4.6.0",
+    "motor>=3.3.0",
     
     # Observability
     "langfuse>=2.20.0",
@@ -47,3 +55,10 @@ target-version = "py311"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "app",
+    "src",
+    "ingestion"
+]

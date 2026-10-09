@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenBCTC Copilot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <style>
+        .pdf-container {
+            position: relative;
+            overflow: auto;
+            background: #e5e7eb;
+            display: flex;
+            justify-content: center;
+        }
+        .pdf-page-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        #bbox-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+        }
+        .bbox-highlight {
+            position: absolute;
+            border: 3px solid rgba(239, 68, 68, 0.9);
+            background-color: rgba(239, 68, 68, 0.25);
+            border-radius: 4px;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+            pointer-events: none;
+            z-index: 20;
+            transition: all 0.2s ease;
+        }
+        /* Styling for markdown content */
+        .markdown-body table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 1rem 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; font-size: 0.875rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05); }
+        .markdown-body th, .markdown-body td { border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; padding: 0.625rem 0.875rem; text-align: left; }
+        .markdown-body th:last-child, .markdown-body td:last-child { border-right: none; }
+        .markdown-body tr:last-child td { border-bottom: none; }
+        .markdown-body th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
+        .markdown-body tr:nth-child(even) td { background-color: #fbfcfe; }
+        .markdown-body tr:hover td { background-color: #f1f5f9; }
+        .markdown-body pre { background-color: #1f2937; color: #f9fafb; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem;}
+        .markdown-body p { margin-bottom: 0.75rem; }
+        
+        .citation-tag {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 2px;
+            transition: all 0.2s;
+        }
+        .citation-tag:hover {
+            background: #bfdbfe;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden bg-gray-50 text-gray-800 relative">
+    
+    <!-- Document Selector Overlay -->
+    <div id="doc-selector" class="absolute inset-0 bg-gray-900/80 z-50 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full transform transition-all">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner">📚</div>
+                <h2 class="text-2xl font-bold text-gray-800">Chọn Tài liệu Phân tích</h2>
+                <p class="text-gray-500 mt-2">OpenBCTC Copilot - Chọn một báo cáo tài chính để bắt đầu</p>
+            </div>
+            <div id="doc-list" class="space-y-3 max-h-64 overflow-y-auto pr-2">
+                <div class="text-center text-sm text-gray-400 py-4 animate-pulse">Đang tải danh sách báo cáo...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Left Pane: Chat -->
+    <div id="main-chat-pane" class="w-1/2 flex flex-col border-r border-gray-200 bg-white shadow-xl z-10 opacity-0 pointer-events-none transition-opacity duration-500">
+        <div class="p-4 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex items-center justify-between shadow-md">
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">OpenBCTC Copilot</h1>
+                <p class="text-xs text-blue-200">Dual-Engine RAG (SQL + Vector) v0.1.0</p>
+            </div>
+            <div class="text-xs bg-blue-900 bg-opacity-50 px-3 py-1 rounded-full border border-blue-400">
+                VNM - 2025
+            </div>
+        </div>
+        
+        <div id="chat-history" class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50">
+            <!-- Messages go here -->
+            <div class="flex gap-4">
+                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-sm">AI</div>
+                <div class="bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 max-w-[85%] text-sm">
+                    Xin chào! Tôi là Copilot phân tích Báo cáo Tài chính của Vinamilk (2025). Bạn muốn tìm hiểu thông tin gì?
+                </div>
+            </div>
+        </div>
+        
+        <div class="p-4 bg-white border-t border-gray-200">
+            <form id="chat-form" class="flex gap-2">
+                <input type="text" id="query-input" placeholder="Ví dụ: Lợi nhuận gộp năm nay là bao nhiêu?" class="flex-1 border border-gray-300 rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm text-sm" autocomplete="off">
+                <button type="submit" id="send-btn" class="bg-blue-600 text-white px-6 py-3 rounded-full hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-sm flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    Gửi
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Pane: PDF Viewer -->
+    <div id="main-pdf-pane" class="w-1/2 flex flex-col bg-gray-100 relative opacity-0 pointer-events-none transition-opacity duration-500">
+        <div class="p-3 bg-gray-200 border-b border-gray-300 flex justify-between items-center text-sm shadow-sm z-10">
+            <div class="font-medium text-gray-700 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" /></svg>
+                VNM_2025.pdf
+            </div>
+            <div class="flex items-center gap-3 text-gray-600">
+                <button id="prev-page" class="hover:bg-gray-300 p-1 rounded transition-colors">&larr;</button>
+                <span class="font-mono bg-white px-2 py-0.5 rounded border border-gray-300 shadow-inner">Page: <span id="page-num">1</span> / <span id="page-count">--</span></span>
+                <button id="next-page" class="hover:bg-gray-300 p-1 rounded transition-colors">&rarr;</button>
+            </div>
+        </div>
+        <div id="pdf-container" class="pdf-container flex-1 p-4">
+            <div id="pdf-wrapper" class="pdf-page-wrapper">
+                <canvas id="pdf-canvas" class="rounded shadow-lg"></canvas>
+                <div id="bbox-layer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let currentCitations = [];
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let pendingBbox = null;
+        const scale = 1.5;
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const bboxLayer = document.getElementById('bbox-layer');
+        // Hỗ trợ chạy tách riêng Frontend (Live Server, file://)
+        const API_BASE_URL = (window.location.origin.includes('8000') || window.location.protocol === 'file:') 
+            ? 'http://127.0.0.1:8000' 
+            : window.location.origin.includes('127.0.0.1') || window.location.origin.includes('localhost') 
+                ? 'http://127.0.0.1:8000' 
+                : '';
+
+        // Global State
+        let CURRENT_COMPANY = 'VNM';
+        let CURRENT_YEAR = 2025;
+
+        // Fetch danh sách Documents
+        async function loadDocuments() {
+            try {
+                const res = await fetch(API_BASE_URL + '/api/v1/documents');
+                const data = await res.json();
+                const listEl = document.getElementById('doc-list');
+                listEl.innerHTML = '';
+                
+                if (data.documents.length === 0) {
+                    listEl.innerHTML = '<div class="text-center text-sm text-gray-500">Chưa có dữ liệu nào trong thư mục data/</div>';
+                    return;
+                }
+
+                data.documents.forEach(doc => {
+                    const btn = document.createElement('button');
+                    btn.className = "w-full text-left px-4 py-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex justify-between items-center group";
+                    btn.innerHTML = `
+                        <div>
+                            <div class="font-semibold text-gray-800 group-hover:text-blue-700">${doc.name}</div>
+                            <div class="text-xs text-gray-400 mt-1">ID: ${doc.id}</div>
+                        </div>
+                        <div class="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">➔</div>
+                    `;
+                    btn.onclick = () => selectDocument(doc);
+                    listEl.appendChild(btn);
+                });
+            } catch (error) {
+                console.error("Error loading documents:", error);
+                document.getElementById('doc-list').innerHTML = '<div class="text-center text-sm text-red-500">Lỗi kết nối đến Backend</div>';
+            }
+        }
+
+        // Chọn Document và vào App
+        function selectDocument(doc) {
+            CURRENT_COMPANY = doc.company;
+            CURRENT_YEAR = doc.year;
+            
+            // Cập nhật UI (Fade out selector, fade in panes)
+            document.getElementById('doc-selector').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                document.getElementById('doc-selector').classList.add('hidden');
+                
+                const chatPane = document.getElementById('main-chat-pane');
+                const pdfPane = document.getElementById('main-pdf-pane');
+                
+                chatPane.classList.remove('opacity-0', 'pointer-events-none');
+                pdfPane.classList.remove('opacity-0', 'pointer-events-none');
+            }, 300);
+
+            // Cập nhật text trên Header
+            const headerBadge = document.querySelector('.bg-blue-900');
+            if(headerBadge) headerBadge.textContent = `${doc.company} - ${doc.year}`;
+            
+            const pdfLabel = document.querySelector('.text-red-500').nextSibling;
+            if(pdfLabel) pdfLabel.textContent = ` ${doc.id}.pdf`;
+            
+            // Tải file PDF
+            loadPDF();
+        }
+
+        // --- Init PDF.js ---
+        function loadPDF() {
+            const url = API_BASE_URL + `/api/v1/pdf/${CURRENT_COMPANY.toLowerCase()}/${CURRENT_YEAR}?t=` + new Date().getTime();
+            
+            pdfjsLib.getDocument({
+                url: url,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+            cMapPacked: true,
+            standardFontDataUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/standard_fonts/'
+        }).promise.then(function(pdfDoc_) {
+            pdfDoc = pdfDoc_;
+            document.getElementById('page-count').textContent = pdfDoc.numPages;
+            renderPage(pageNum);
+        }).catch(err => {
+            console.error("Lỗi tải PDF:", err);
+            ctx.fillStyle = "#f3f4f6";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#ef4444";
+            ctx.font = "16px sans-serif";
+            ctx.fillText("Không tìm thấy file PDF trên server", 50, 50);
+        });
+        } // ĐÓNG NGOẶC HÀM loadPDF() TẠI ĐÂY!
+
+        function highlightBbox(bbox) {
+            if (!bboxLayer || !bbox || bbox.length !== 4) return;
+            bboxLayer.innerHTML = '';
+
+            // BBox từ backend là chuẩn normalized [ymin, xmin, ymax, xmax] (0.0 -> 1.0)
+            const [ymin, xmin, ymax, xmax] = bbox;
+            const top = Math.min(ymin, ymax) * 100;
+            const left = Math.min(xmin, xmax) * 100;
+            const height = Math.max(1.5, Math.abs(ymax - ymin) * 100);
+            const width = Math.max(2, Math.abs(xmax - xmin) * 100);
+
+            const box = document.createElement('div');
+            box.className = 'bbox-highlight';
+            box.style.top = top + '%';
+            box.style.left = left + '%';
+            box.style.height = height + '%';
+            box.style.width = width + '%';
+
+            box.animate([
+                { opacity: 0.2, transform: 'scale(0.98)' },
+                { opacity: 0.95, transform: 'scale(1.02)' },
+                { opacity: 0.5, transform: 'scale(1)' }
+            ], { duration: 800, iterations: 3 });
+
+            bboxLayer.appendChild(box);
+
+            // Cuộn mượt tới vị trí của BBox
+            const container = document.getElementById('pdf-container');
+            if (container && bboxLayer.clientHeight > 0) {
+                const scrollToY = (Math.min(ymin, ymax) * bboxLayer.clientHeight) - (container.clientHeight / 3);
+                container.scrollTo({ top: Math.max(0, scrollToY), behavior: 'smooth' });
+            }
+        }
+
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                // Tự động scale PDF cho vừa khít chiều rộng của khung bên phải
+                const container = document.getElementById('pdf-container');
+                const unscaledViewport = page.getViewport({scale: 1.0});
+                const clientW = container && container.clientWidth > 100 ? container.clientWidth : 700;
+                const dynamicScale = Math.max(0.6, (clientW - 40) / unscaledViewport.width);
+                
+                const viewport = page.getViewport({scale: dynamicScale});
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                if (bboxLayer) {
+                    bboxLayer.style.width = viewport.width + 'px';
+                    bboxLayer.style.height = viewport.height + 'px';
+                    bboxLayer.innerHTML = ''; // Clear old bboxes
+                }
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                const renderTask = page.render(renderContext);
+
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pendingBbox) {
+                        highlightBbox(pendingBbox);
+                        pendingBbox = null;
+                    }
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+            document.getElementById('page-num').textContent = num;
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        document.getElementById('prev-page').addEventListener('click', () => {
+            if (pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        });
+
+        document.getElementById('next-page').addEventListener('click', () => {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        });
+
+        // Tự động resize lại PDF khi thay đổi kích thước cửa sổ
+        window.addEventListener('resize', () => {
+            if (pdfDoc) queueRenderPage(pageNum);
+        });
+
+        // --- Chat Logic ---
+        const chatForm = document.getElementById('chat-form');
+        const queryInput = document.getElementById('query-input');
+        const chatHistory = document.getElementById('chat-history');
+
+        // Hàm tiền xử lý text Markdown trước khi parse
+        function cleanMarkdown(text) {
+            if (!text) return '';
+            let cleaned = text;
+
+            // 1. Khắc phục bảng Markdown dính trên 1 dòng đơn:
+            // Tách các hàng kết thúc bằng || hoặc | | thành dòng mới |\n|
+            cleaned = cleaned.replace(/\|\s*\|(?=[ -|:])/g, '|\n|');
+            
+            // 2. Tách nếu dòng mở đầu bảng (| Cột 1 | Cột 2 |) dính ngay sau chữ mà không có dòng trống
+            cleaned = cleaned.replace(/([^\n])\n?(\| [^\n]+\|)/g, '$1\n\n$2');
+            
+            // 3. Chuẩn hoá danh sách gạch đầu dòng (-) bị dính liền trên 1 dòng đơn:
+            // a. Tách sau dấu hai chấm hoặc chấm trước gạch đầu dòng: "bao gồm:- " -> "bao gồm:\n\n- "
+            cleaned = cleaned.replace(/([:;.])\s*-\s*/g, '$1\n\n- ');
+            // b. Tách giữa các item danh sách có tag cite hoặc ngoặc đóng: " [cite_2] - " -> " [cite_2]\n- "
+            cleaned = cleaned.replace(/(\[[^\]]+\]|\))\s*-\s*/g, '$1\n- ');
+            // c. Tách gạch đầu dòng đứng sau bất kỳ ký tự nào không phải xuống dòng
+            cleaned = cleaned.replace(/(?<=[^\n])\s+-\s*/g, '\n- ');
+
+            // 4. Xoá mọi chuỗi debug thô *(Block: ...)* hoặc (Block: ...) nếu còn sót
+            cleaned = cleaned.replace(/\s*\*?\s*\(Block:\s*[^)]+\)\s*\*?/gi, '');
+            
+            return cleaned;
+        }
+
+        // Hàm regex xử lý mọi loại ngoặc [cite_1], [[cite_1]], [cite 1], [[cite 1]], 【cite 1】
+        function replaceCitations(text) {
+            return text.replace(/[\[【]+cite[ _:-]?(\d+)[\]】]+/gi, (match, id) => {
+                return `<span class="citation-tag" onclick="jumpToCitation('${id}')">[cite_${id}]</span>`;
+            });
+        }
+
+        function appendMessage(sender, text, isMarkdown = false, meta = null) {
+            const div = document.createElement('div');
+            div.className = "flex gap-4 fade-in mb-4";
+            
+            const isUser = sender === 'User';
+            const iconBg = isUser ? 'bg-indigo-100 text-indigo-700' : 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md';
+            const bubbleBg = isUser ? 'bg-indigo-50 border-indigo-100 rounded-tr-none' : 'bg-white border-gray-100 rounded-tl-none';
+            
+            let contentHTML = isMarkdown ? marked.parse(cleanMarkdown(text)) : text;
+            
+            if (!isUser) {
+                contentHTML = replaceCitations(contentHTML);
+            }
+
+            let metaHTML = '';
+            if (meta) {
+                let statusColor = "bg-gray-100 text-gray-700";
+                if (meta.fact_check === 'FactCheckStatus.PASSED') statusColor = "bg-green-100 text-green-700 border-green-200";
+                if (meta.fact_check === 'FactCheckStatus.FAILED') statusColor = "bg-red-100 text-red-700 border-red-200";
+                
+                metaHTML = `
+                <div class="mt-3 pt-3 border-t border-gray-100 flex gap-2 text-xs flex-wrap">
+                    <span class="px-2 py-1 rounded bg-gray-100 text-gray-600 font-mono">Intent: ${meta.intent}</span>
+                    <span class="px-2 py-1 rounded border ${statusColor} font-mono">Fact-Check: ${meta.fact_check || 'N/A'}</span>
+                </div>`;
+            }
+
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full ${iconBg} flex items-center justify-center font-bold shrink-0 text-sm">
+                    ${isUser ? 'U' : 'AI'}
+                </div>
+                <div class="p-4 rounded-2xl shadow-sm border max-w-[85%] text-sm ${bubbleBg} text-gray-800">
+                    <div class="markdown-body leading-relaxed content-area">${contentHTML}</div>
+                    <div class="meta-area">${metaHTML}</div>
+                </div>
+            `;
+            chatHistory.appendChild(div);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            return div;
+        }
+
+        window.jumpToCitation = function(id) {
+            const cite = currentCitations.find(c => 
+                c.citation_id === `cite_${id}` || 
+                c.citation_id === `cite ${id}` || 
+                c.citation_id === String(id) ||
+                (c.citation_id && c.citation_id.endsWith(`_${id}`))
+            );
+            if (!cite) {
+                console.warn("Citation not found for id:", id, "Available citations:", currentCitations);
+                return;
+            }
+
+            const targetPage = parseInt(cite.page, 10);
+            if (isNaN(targetPage) || targetPage < 1) return;
+
+            pendingBbox = cite.bbox;
+
+            if (pageNum === targetPage && !pageRendering) {
+                highlightBbox(pendingBbox);
+                pendingBbox = null;
+            } else {
+                pageNum = targetPage;
+                queueRenderPage(pageNum);
+            }
+        };
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const query = queryInput.value.trim();
+            if (!query) return;
+
+            appendMessage('User', query);
+            queryInput.value = '';
+            
+            const btn = document.getElementById('send-btn');
+            btn.disabled = true;
+            btn.innerHTML = `Đang nghĩ...`;
+
+            const aiMsgDiv = appendMessage('AI', '...');
+            const aiContent = aiMsgDiv.querySelector('.content-area');
+            const aiMeta = aiMsgDiv.querySelector('.meta-area');
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/api/v1/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        query: query, 
+                        company: CURRENT_COMPANY, 
+                        year: CURRENT_YEAR 
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let answerText = '';
+                
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.slice(6).replace(/\r$/, ''); // Chỉ xoá \r để giữ lại dấu cách của token
+                            if (dataStr === '[DONE]') break;
+                            
+                            try {
+                                const meta = JSON.parse(dataStr);
+                                if (meta.citations) {
+                                    currentCitations = meta.citations;
+                                    let statusColor = "bg-gray-100 text-gray-700";
+                                    if (meta.fact_check === 'FactCheckStatus.PASSED') statusColor = "bg-green-100 text-green-700 border-green-200";
+                                    if (meta.fact_check === 'FactCheckStatus.FAILED') statusColor = "bg-red-100 text-red-700 border-red-200";
+                                    aiMeta.innerHTML = `
+                                    <div class="mt-3 pt-3 border-t border-gray-100 flex gap-2 text-xs flex-wrap">
+                                        <span class="px-2 py-1 rounded bg-gray-100 text-gray-600 font-mono">Intent: ${meta.intent}</span>
+                                        <span class="px-2 py-1 rounded border ${statusColor} font-mono">Fact-Check: ${meta.fact_check || 'N/A'}</span>
+                                    </div>`;
+                                }
+                            } catch(e) {
+                                if (answerText === '...') answerText = '';
+                                answerText += dataStr;
+                            }
+                            
+                            // Luôn luôn parse Markdown và replace Citations sau mỗi token
+                            let contentHTML = marked.parse(cleanMarkdown(answerText));
+                            contentHTML = replaceCitations(contentHTML);
+                            aiContent.innerHTML = contentHTML;
+                            chatHistory.scrollTop = chatHistory.scrollHeight;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                aiContent.innerHTML = `<span class="text-red-500">Lỗi kết nối tới máy chủ AI.</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `Gửi`;
+            }
+        });
+
+        // Khởi động
+        loadDocuments();
+    </script>
+    <style>
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</body>
+</html>

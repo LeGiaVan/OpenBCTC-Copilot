@@ -9,7 +9,7 @@ class LayoutAwareChunker:
     - Loại bỏ boilerplate vụn vặt (< 25 ký tự)
     - Gom các block văn bản liên tiếp cùng trang thành chunk đạt 300 - 800 ký tự
     - Giữ nguyên bảng biểu thành các chunk độc lập
-    - Tự động tính Enclosing Bounding Box [ymin, xmin, ymax, xmax] cho toàn bộ đoạn gộp
+    - Tự động tính Enclosing Bounding Box [xmin, ymin, xmax, ymax] cho toàn bộ đoạn gộp
     """
 
     BOILERPLATE_PATTERNS = [
@@ -57,12 +57,12 @@ class LayoutAwareChunker:
         first_b = group[0]
         raw_text = "\n\n".join(b.content.strip() for b in group if b.content.strip())
 
-        # Tính hộp bao ngoài (Enclosing Union Bounding Box)
-        ymin = min(b.bbox[0] for b in group)
-        xmin = min(b.bbox[1] for b in group)
-        ymax = max(b.bbox[2] for b in group)
-        xmax = max(b.bbox[3] for b in group)
-        enclosing_bbox = [round(ymin, 4), round(xmin, 4), round(ymax, 4), round(xmax, 4)]
+        # Tính hộp bao ngoài (Enclosing Union Bounding Box [xmin, ymin, xmax, ymax])
+        xmin = min(b.bbox[0] for b in group)
+        ymin = min(b.bbox[1] for b in group)
+        xmax = max(b.bbox[2] for b in group)
+        ymax = max(b.bbox[3] for b in group)
+        enclosing_bbox = [round(xmin, 4), round(ymin, 4), round(xmax, 4), round(ymax, 4)]
 
         # Context header
         if self.enrich_context:

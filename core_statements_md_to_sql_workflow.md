@@ -13,20 +13,7 @@
   <img src="images/fig1_core_statements_md_to_sql_workflow.png" alt="Sơ đồ tổng quan workflow Core Statements MD to SQL" width="70%" />
 </p>
 
-```mermaid
-flowchart TD
-    MD["File Markdown BCTC (.md)"] --> L["B1. MD Core Loader<br/>Cắt 3 section cốt lõi theo heading<br/>Gom các Markdown table"]
-    L --> CB["list ClassifiedBlock<br/>(FINANCIAL_STATEMENT, target=SQL)"]
-    CB --> COL["B2. Column Detection<br/>label / code / note / current / previous"]
-    COL --> ROW["B3. Row Parsing<br/>clean label, mã số, clean_ocr_number"]
-    ROW --> ONT["B4. Ontology Mapping (TT200)<br/>match_concept_from_label_and_code"]
-    ONT -->|"concept = None"| DROP["Bỏ qua dòng (không map được)"]
-    ONT -->|"concept OK"| FACT["B5. Tạo FinancialFact<br/>current + previous, prov_id"]
-    FACT --> VER["B6. AccountingVerifier (Anti-GIGO)<br/>17 đẳng thức kế toán"]
-    VER --> DB[("B7. SQLite<br/>financial_facts<br/>financial_statements")]
-    DB --> FE["B8 (tuỳ chọn). FormulaEngine<br/>13 chỉ số tài chính"]
-    FE --> DB
-```
+
 
 | Bước | Thành phần | File nguồn | Trạng thái |
 | :--- | :--- | :--- | :--- |

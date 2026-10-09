@@ -1,0 +1,84 @@
+version: '3.8'
+
+networks:
+  openbctc-net:
+    name: openbctc-net
+    driver: bridge
+
+services:
+  # 1. Backend FastAPI
+  copilot-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      # Vector DB (Qdrant)
+      - QDRANT_URL=http://qdrant:6333
+      # Document Storage (MongoDB)
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=openbctc
+    depends_on:
+      qdrant:
+        condition: service_started
+      mongodb:
+        condition: service_started
+    volumes:
+      - ./data:/app/data # Cầu nối để Backend trong Docker truy cập SQLite
+      - ../OpenBCTC/outputs:/app/outputs:ro # Mount thư mục đầu ra của OpenBCTC làm nguồn facts
+    networks:
+      - openbctc-net
+
+  # 2. Frontend Web UI + Static Object Storage (Nginx)
+  copilot-ui:
+    image: nginx:alpine
+    ports:
+      - 5500:80
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+      - ./data:/usr/share/nginx/html/data:ro # Biến Nginx thành Storage Server phân phối PDF!
+    networks:
+      - openbctc-net
+
+  # 3. Vector Database cho RAG
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - 6333:6333
+      - 6334:6334
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - openbctc-net
+
+  # 4. MongoDB GridFS cho Document/PDF Storage
+  mongodb:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - openbctc-net
+
+  # 5. Web UI quản lý MongoDB trên trình duyệt
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - 8081:8081
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongodb:27017/
+      - ME_CONFIG_BASICAUTH=false # Tắt yêu cầu mật khẩu đăng nhập ở local dev
+    depends_on:
+      - mongodb
+    networks:
+      - openbctc-net
+
+volumes:
+  qdrant_data:
+  mongodb_data:

@@ -48,8 +48,12 @@ _NOTE_PATTERNS = [
     re.compile(r"\b(cơ sở lập báo cáo|nguyên tắc kế toán|chuẩn mực kế toán)\b", re.I),
     # Kiểm toán / Kiểm soát nội bộ
     re.compile(r"\b(kiểm toán viên|ý kiến kiểm toán|báo cáo kiểm toán|độc lập)\b", re.I),
-    # Cơ cấu chi tiết
-    re.compile(r"\b(cơ cấu|chi tiết|bảng kê|danh mục|liệt kê|bao gồm)\b", re.I),
+    # Cơ cấu tổ chức & Lãnh đạo, ban điều hành
+    re.compile(r"\b(hội đồng quản trị|hđqt|ban giám đốc|ban kiểm soát|thành viên|chủ tịch|tổng giám đốc|lãnh đạo|người đại diện|ai là|là ai)\b", re.I),
+    # Trụ sở, địa chỉ, cơ sở hoạt động
+    re.compile(r"\b(trụ sở|địa chỉ|ở đâu|tại đâu|thông tin chung|nhà máy|chi nhánh|đơn vị trực thuộc)\b", re.I),
+    # Cơ cấu chi tiết & danh mục
+    re.compile(r"\b(cơ cấu|chi tiết|bảng kê|danh mục|liệt kê|bao gồm|danh sách)\b", re.I),
     re.compile(r"\b(hàng tồn kho gồm|phân loại|chia ra|trong đó)\b", re.I),
     # Rủi ro / Cam kết
     re.compile(r"\b(rủi ro (tín dụng|lãi suất|thanh khoản|ngoại hối)|cam kết|bảo lãnh)\b", re.I),

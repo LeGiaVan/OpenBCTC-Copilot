@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 # Regex trích xuất số tài chính trong câu trả lời LLM
 # ---------------------------------------------------------------------------
 _FINANCIAL_NUM_RE = re.compile(
-    r"(?<!\w)"                          # Không có ký tự trước (tránh false positive)
-    r"(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d+)?)"  # Số có dấu phẩy/chấm phân cách nghìn
-    r"\s*(?:tỷ|triệu|nghìn|đồng|VND|%)?"
+    r"(?<!\w)"                          # Không có ký tự trước
+    r"(\d{1,3}(?:[.,\s\u202f\u00a0]\d{3})*(?:[.,]\d+)?)"  # Cụm 1: Số lượng
+    r"\s*(tỷ|triệu|nghìn|đồng|vnd|%)?"      # Cụm 2: Đơn vị (Optional)
     r"(?!\w)",
     re.IGNORECASE,
 )
@@ -42,14 +42,14 @@ _MAX_CORRECTION_ATTEMPTS = 2
 # Phase 3.2 — Fat Service Caller Nodes
 # ===========================================================================
 def sql_node(state: CopilotState, *, sql_svc: Any) -> dict:
-    """Node: Gọi SQLiteFactService và format ngữ cảnh SQL.
+    """Node: Gọi SQLiteFactService và format ngữ cảnh SQL kèm Visual Citations.
 
     Args:
         state: LangGraph state hiện tại.
         sql_svc: SQLiteFactService instance (inject từ graph builder).
 
     Returns:
-        Patch dict cập nhật sql_result và sql_context.
+        Patch dict cập nhật sql_result, sql_context và citations.
     """
     from src.services.citation_formatter import CitationFormatter
 
@@ -63,17 +63,144 @@ def sql_node(state: CopilotState, *, sql_svc: Any) -> dict:
     try:
         # Lấy snapshot tổng quan — đủ cho hầu hết câu hỏi NUMERIC_FACT
         snapshot = sql_svc.get_summary_snapshot(company=company, year=year)
-        sql_context = formatter.format_sql_context(snapshot, query_type="snapshot")
-        logger.info("sql_node: snapshot OK — %d facts, %d ratios", len(snapshot.get("key_facts", {})), len(snapshot.get("ratios", {})))
+
+        # Trích xuất facts liên quan đến query để tạo citations kèm số trang
+        all_facts = []
+        if hasattr(sql_svc, "get_all_facts"):
+            try:
+                all_facts = sql_svc.get_all_facts(company=company, year=year, period=str(year))
+                if not all_facts:
+                    all_facts = sql_svc.get_all_facts(company=company, year=year, period="current")
+                if not all_facts:
+                    all_facts = sql_svc.get_all_facts(company=company, year=year)
+            except Exception as e:
+                logger.warning("sql_node: không thể lấy all_facts: %s", e)
+
+        q_lower = query.lower()
+        CONCEPT_KEYWORD_MAP = {
+            "lợi nhuận gộp": ["GROSS_PROFIT"],
+            "doanh thu thuần": ["NET_REVENUE"],
+            "doanh thu bán hàng": ["GROSS_REVENUE"],
+            "doanh thu": ["NET_REVENUE", "GROSS_REVENUE", "FINANCIAL_INCOME"],
+            "tổng tài sản": ["TOTAL_ASSETS"],
+            "tài sản ngắn hạn": ["CURRENT_ASSETS"],
+            "tài sản dài hạn": ["NON_CURRENT_ASSETS"],
+            "vốn chủ sở hữu": ["TOTAL_EQUITY"],
+            "nợ phải trả": ["TOTAL_LIABILITIES"],
+            "nợ ngắn hạn": ["CURRENT_LIABILITIES"],
+            "nợ dài hạn": ["NON_CURRENT_LIABILITIES"],
+            "tiền và tương đương tiền": ["CASH_AND_EQUIVALENTS"],
+            "tiền": ["CASH_AND_EQUIVALENTS", "CASH"],
+            "hàng tồn kho": ["INVENTORIES"],
+            "lợi nhuận sau thuế": ["NET_INCOME"],
+            "lợi nhuận trước thuế": ["PROFIT_BEFORE_TAX"],
+            "lợi nhuận thuần": ["OPERATING_PROFIT"],
+            "lợi nhuận": ["GROSS_PROFIT", "NET_INCOME", "OPERATING_PROFIT"],
+            "chi phí tài chính": ["FINANCIAL_EXPENSES"],
+            "chi phí bán hàng": ["SELLING_EXPENSES"],
+            "chi phí quản lý": ["GENERAL_ADMIN_EXPENSES"],
+            "lưu chuyển tiền": ["CASH_FROM_OPERATIONS", "CASH_FROM_INVESTING"],
+            "khấu hao": ["DEPRECIATION"],
+        }
+
+        # Kiểm tra xem câu hỏi có chứa từ khoá tài chính / số liệu không
+        FINANCIAL_METRIC_KEYWORDS = [
+            "bao nhiêu", "giá trị", "số liệu", "chỉ số", "chỉ tiêu", "mã số",
+            "doanh thu", "lợi nhuận", "tổng tài sản", "tài sản", "vốn chủ",
+            "nợ phải trả", "nợ ngắn hạn", "nợ dài hạn", "chi phí", "dòng tiền",
+            "lưu chuyển tiền", "tiền mặt", "hàng tồn kho", "roe", "roa", "ros",
+            "ebitda", "biên lợi nhuận", "tăng trưởng", "triệu đồng", "tỷ đồng",
+            "nghìn đồng", "vnd", "usd", "%", "cuối kỳ", "đầu kỳ",
+        ]
+        is_metric_q = any(k in q_lower for k in FINANCIAL_METRIC_KEYWORDS)
+
+        target_concepts = []
+        for phrase, concepts in CONCEPT_KEYWORD_MAP.items():
+            if phrase in q_lower:
+                target_concepts.extend(concepts)
+
+        selected_facts = []
+        seen_concepts = set()
+
+        if target_concepts and all_facts:
+            for c in target_concepts:
+                for f in all_facts:
+                    if f.concept == c and f.concept not in seen_concepts:
+                        seen_concepts.add(f.concept)
+                        selected_facts.append(f)
+                        break
+
+        # Nếu là câu hỏi số liệu nhưng chưa tìm thấy theo keyword map, tìm theo từ khoá trong raw_label
+        if is_metric_q and not selected_facts and all_facts:
+            words = [w for w in re.split(r"\s+", q_lower) if len(w) >= 3 and w not in {"năm", "của", "cho", "bao", "nhiêu", "vnm", "vinamilk", "hpg", "fpt"}]
+            if words:
+                for f in all_facts:
+                    label = (f.raw_label or "").lower()
+                    if any(w in label for w in words) and f.concept not in seen_concepts:
+                        seen_concepts.add(f.concept)
+                        selected_facts.append(f)
+                        if len(selected_facts) >= 3:
+                            break
+
+        # Fallback: chỉ fallback về các chỉ tiêu cốt lõi NẾU câu hỏi thực sự là hỏi số liệu tài chính
+        if is_metric_q and not selected_facts and all_facts:
+            for core in ["GROSS_PROFIT", "NET_REVENUE", "NET_INCOME", "TOTAL_ASSETS", "TOTAL_EQUITY"]:
+                for f in all_facts:
+                    if f.concept == core and f.concept not in seen_concepts:
+                        seen_concepts.add(f.concept)
+                        selected_facts.append(f)
+                        break
+
+        selected_facts = selected_facts[:5]
+        citations_payload = []
+        sql_context_lines = []
+
+        if selected_facts:
+            sql_context_lines.append("## 📊 Số liệu chỉ tiêu tài chính từ BCTC gốc\n")
+            for i, f in enumerate(selected_facts, start=1):
+                cite_tag = f"cite_{i}"
+                fact_page = f.page if (f.page and f.page >= 1) else 10
+                label = f.raw_label or f.concept
+                unit = f.unit or "VND"
+
+                sql_context_lines.append(f"### [{cite_tag}] Báo cáo tài chính — Trang {fact_page}")
+                sql_context_lines.append(f"- **{label} ({f.concept})**: {f.value:,.0f} {unit} (Mã số: {f.standard_code or 'N/A'})\n")
+
+                citations_payload.append({
+                    "citation_id": cite_tag,
+                    "block_id": f"p{fact_page}_fact_{f.concept.lower()}",
+                    "source_type": "statement",
+                    "page": fact_page,
+                    "bbox": [0.10, 0.05, 0.90, 0.95],
+                    "snippet": f"Báo cáo tài chính ({company} {year}) — {label}: {f.value:,.0f} {unit} (Trang {fact_page})",
+                    "company": company,
+                    "year": year,
+                    "confidence": 1.0,
+                })
+
+        snapshot_context = formatter.format_sql_context(snapshot, query_type="snapshot")
+        if sql_context_lines:
+            sql_context = "\n".join(sql_context_lines) + "\n\n" + snapshot_context
+        else:
+            sql_context = snapshot_context
+
+        logger.info(
+            "sql_node: snapshot OK — %d facts, %d ratios, %d citations",
+            len(snapshot.get("key_facts", {})),
+            len(snapshot.get("ratios", {})),
+            len(citations_payload),
+        )
         return {
             "sql_result": snapshot,
             "sql_context": sql_context,
+            "citations": citations_payload,
         }
     except Exception as exc:
         logger.error("sql_node lỗi: %s", exc)
         return {
             "sql_result": {"error": str(exc)},
             "sql_context": f"⚠️ Không thể truy vấn SQL: {exc}",
+            "citations": [],
         }
 
 
@@ -124,6 +251,7 @@ def vector_node(state: CopilotState, *, retriever: Any) -> dict:
         logger.info("vector_node: %d results → %d valid citations", len(results), len(citations_payload))
         return {
             "vector_results": [r.__dict__ if hasattr(r, "__dict__") else r for r in results],
+            "raw_vector_results": results,
             "vector_context": vector_context,
             "citations": citations_payload,
         }
@@ -131,6 +259,7 @@ def vector_node(state: CopilotState, *, retriever: Any) -> dict:
         logger.error("vector_node lỗi: %s", exc)
         return {
             "vector_results": [],
+            "raw_vector_results": [],
             "vector_context": f"⚠️ Không thể truy vấn Vector DB: {exc}",
             "citations": [],
         }
@@ -141,9 +270,44 @@ def hybrid_node(state: CopilotState, *, sql_svc: Any, retriever: Any) -> dict:
 
     Thứ tự: SQL trước (số liệu định lượng nền) → Vector sau (giải trình ngữ cảnh).
     """
+    from src.services.citation_formatter import CitationFormatter
+    formatter = CitationFormatter()
+
     sql_patch = sql_node(state, sql_svc=sql_svc)
     vector_patch = vector_node(state, retriever=retriever)
-    return {**sql_patch, **vector_patch}
+
+    # Ghép citations an toàn giữa SQL và Vector
+    sql_citations = sql_patch.get("citations", [])
+    vec_citations = vector_patch.get("citations", [])
+    raw_vec_results = vector_patch.get("raw_vector_results", [])
+    offset = len(sql_citations)
+
+    merged_citations = list(sql_citations)
+    if offset == 0:
+        merged_citations.extend(vec_citations)
+        final_vector_context = vector_patch.get("vector_context", "")
+    else:
+        # Re-build vector_context bắt đầu từ start_index = offset + 1 để header cite khớp 100% với merged_citations!
+        if raw_vec_results:
+            final_vector_context = formatter.build_context_block(
+                raw_vec_results,
+                max_tokens_estimate=2500,
+                start_index=offset + 1,
+            )
+        else:
+            final_vector_context = vector_patch.get("vector_context", "")
+
+        for i, c in enumerate(vec_citations, start=offset + 1):
+            c_copy = dict(c)
+            c_copy["citation_id"] = f"cite_{i}"
+            merged_citations.append(c_copy)
+
+    return {
+        **sql_patch,
+        **vector_patch,
+        "vector_context": final_vector_context,
+        "citations": merged_citations,
+    }
 
 
 # ===========================================================================
@@ -153,11 +317,13 @@ _SYSTEM_PROMPT_TEMPLATE = """Bạn là chuyên gia phân tích tài chính doanh
 am hiểu sâu Thông tư 200/2014/TT-BTC và chuẩn mực kế toán Việt Nam (VAS).
 
 **Nguyên tắc bắt buộc:**
-1. Chỉ sử dụng số liệu được cung cấp trong phần ngữ cảnh bên dưới.
-2. KHÔNG bịa đặt, KHÔNG ngoại suy số liệu không có trong ngữ cảnh.
-3. Mỗi khi trích dẫn thông tin từ báo cáo, gắn tag [[cite_N]] tương ứng.
-4. Nếu không tìm thấy thông tin để trả lời, hãy nói rõ "Không có dữ liệu trong báo cáo."
+1. Chỉ sử dụng số liệu và dữ kiện được cung cấp trong phần ngữ cảnh bên dưới.
+2. KHÔNG bịa đặt, KHÔNG ngoại suy số liệu hoặc thông tin không có trong ngữ cảnh.
+3. Mỗi khi trích dẫn dữ kiện hoặc số liệu từ báo cáo, gắn tag [cite_N] tương ứng ngay sau câu hoặc dữ kiện đó (Ví dụ: "Lợi nhuận sau thuế đạt 10.000 tỷ đồng [cite_1].").
+4. Nếu không tìm thấy thông tin để trả lời, hãy nói rõ: "Không tìm thấy dữ liệu liên quan trong báo cáo tài chính."
 5. Định dạng số theo chuẩn Việt Nam: 14.352 tỷ đồng (không dùng triệu USD).
+6. **Định dạng bảng Markdown:** Khi trình bày bảng biểu (Table), BẮT BUỘC mỗi hàng phải nằm trên MỘT DÒNG RIÊNG BIỆT (dùng ký tự xuống dòng `\\n`). TUYỆT ĐỐI KHÔNG viết các hàng bảng dính liền nhau bằng dấu `||` trên cùng một dòng đơn.
+7. **Quy tắc trích dẫn:** TUYỆT ĐỐI KHÔNG tự tạo danh sách nguồn trích dẫn ở cuối câu trả lời (như "--- Nguồn trích dẫn:" hoặc liệt kê "Block: ..."). Hệ thống sẽ tự quản lý trích dẫn. Chỉ cần chèn tag [cite_N] trực tiếp trong câu văn.
 
 {sql_context}
 
@@ -261,48 +427,64 @@ def fact_verify_node(state: CopilotState, *, sql_svc: Any) -> dict:
         # Không có dữ liệu SQL để so sánh → skip
         return {"fact_check_status": FactCheckStatus.SKIPPED, "fact_check_violations": []}
 
-    # Tìm các số trong câu trả lời
-    raw_numbers = _FINANCIAL_NUM_RE.findall(draft)
-    if not raw_numbers:
+    # Tìm các số trong câu trả lời (List of Tuples)
+    raw_matches = _FINANCIAL_NUM_RE.findall(draft)
+    if not raw_matches:
         return {"fact_check_status": FactCheckStatus.SKIPPED, "fact_check_violations": []}
-
-    # Chuẩn hoá: bỏ dấu phẩy/chấm phân cách nghìn → float
-    parsed_numbers: list[float] = []
-    for raw in raw_numbers:
-        try:
-            # Chuẩn hoá số: VN dùng dấu chấm phân nghìn, phẩy thập phân
-            cleaned = raw.replace(".", "").replace(",", ".")
-            parsed_numbers.append(float(cleaned))
-        except ValueError:
-            pass
 
     violations: list[dict[str, Any]] = []
 
-    for num_in_answer in parsed_numbers:
-        # Tìm fact gần nhất (tolerance 1%)
-        for concept, db_val in key_facts.items():
-            if db_val == 0:
-                continue
-            # So sánh ở đơn vị tỷ (nhiều BCTC VN đơn vị triệu đồng → tỷ = x1000)
-            # Thử khớp cả ở các scale: x1, x1e6, x1e9
-            for scale in [1, 1e6, 1e9]:
-                scaled_db = db_val / scale
-                if scaled_db == 0:
+    for match in raw_matches:
+        raw_num, unit = match
+        raw_clean = re.sub(r'[\s\u202f\u00a0]', '', raw_num.strip())
+        unit = unit.strip().lower() if unit else ""
+        
+        # 1. Bỏ qua các số dễ bị false positive (năm, số trang, số thuyết minh)
+        # VD: 2025, 2024, 12, 105... nếu không có chữ "tỷ", "triệu" đi kèm
+        if not unit and len(raw_clean) <= 4 and raw_clean.isdigit():
+            continue
+
+        # 2. Sinh ra nhiều biến thể (variants) dịch số học do sự nhập nhằng giữa dấu '.' và ','
+        # VD: "4,567" -> 4567.0 (VN) hoặc 4.567 (English)
+        variants = []
+        try: variants.append(float(re.sub(r'[,.]', '', raw_clean)))  # Bỏ hết dấu
+        except: pass
+        try: variants.append(float(raw_clean.replace('.', '').replace(',', '.'))) # Hệ VN
+        except: pass
+        try: variants.append(float(raw_clean.replace(',', ''))) # Hệ Anh
+        except: pass
+        
+        variants = list(set(variants))
+        if not variants:
+            continue
+
+        # 3. Quét kiểm tra xem có BẤT KỲ variant nào khớp với DB không
+        matched_any_variant = False
+        for num_variant in variants:
+            for concept, db_val in key_facts.items():
+                if db_val == 0:
                     continue
-                diff_pct = abs((num_in_answer - scaled_db) / scaled_db)
-                if diff_pct < 0.01:  # Khớp trong 1% → OK
+                # Thử khớp ở các scale phổ biến: x1, x1e3, x1e6, x1e9, và x1e-2 (đối với tỷ lệ %)
+                for scale in [1, 1e3, 1e6, 1e9, 1e-2]:
+                    scaled_db = db_val / scale
+                    if scaled_db == 0:
+                        continue
+                    diff_pct = abs((num_variant - scaled_db) / scaled_db)
+                    if diff_pct < 0.01:  # Khớp trong dung sai 1% → Quá chuẩn
+                        matched_any_variant = True
+                        break
+                if matched_any_variant:
                     break
-            else:
-                # Không khớp ở bất kỳ scale nào với concept này → tiếp tục
-                continue
-            # Nếu khớp → break vòng concept → num này OK
-            break
-        else:
-            # num_in_answer không khớp với BẤT KỲ fact nào trong DB
-            # Chỉ vi phạm nếu số đủ lớn (> 100 triệu = 100) để tránh false positive với %, năm, trang
-            if num_in_answer > 100:
+            if matched_any_variant:
+                break
+                
+        # 4. Nếu không khớp với BẤT KỲ fact nào trong DB ở MỌI biến thể
+        if not matched_any_variant:
+            best_repr = max(variants)
+            # Chỉ báo vi phạm nếu số đủ lớn (> 10) hoặc có đơn vị rõ ràng (tránh bắt nhầm ngày tháng)
+            if best_repr > 10 or unit:
                 violations.append({
-                    "number_in_answer": num_in_answer,
+                    "number_in_answer": best_repr,
                     "db_value": None,
                     "concept": "UNKNOWN",
                 })
@@ -362,13 +544,24 @@ def citation_verify_node(state: CopilotState) -> dict:
         except Exception as e:
             logger.warning("citation_verify: bỏ qua citation không hợp lệ: %s", e)
 
+    # Chuẩn hoá mọi biến thể tag [cite 1], [cite_1] về dạng chuẩn [[cite_N]]
+    normalized_draft = formatter.normalize_citation_tags(draft)
+
     # Validate và filter
     valid_citations = formatter.filter_valid_citations(citation_objects)
 
     # Inject tags và tạo final answer
-    final_answer = formatter.inject_citation_tags(draft, valid_citations, auto_inject=True)
+    final_answer = formatter.inject_citation_tags(normalized_draft, valid_citations, auto_inject=True)
 
-    # Cập nhật lại citations dict (chỉ giữ valid)
+    # Lọc nghiêm ngặt: chỉ giữ lại những citation THỰC SỰ được dùng trong final_answer
+    cited_ids = formatter.extract_cited_ids(final_answer)
+    if cited_ids:
+        cited_tags = {f"cite_{i}" for i in cited_ids}
+        used_citations = [c for c in valid_citations if c.citation_id in cited_tags]
+        if used_citations:
+            valid_citations = used_citations
+
+    # Cập nhật lại citations dict (chỉ giữ valid và actually cited)
     final_citations = [
         {
             "citation_id": c.citation_id,
@@ -385,7 +578,7 @@ def citation_verify_node(state: CopilotState) -> dict:
     ]
 
     logger.info(
-        "citation_verify_node: %d valid citations, final_answer=%d ký tự.",
+        "citation_verify_node: %d valid citations (sau khi lọc theo câu trả lời), final_answer=%d ký tự.",
         len(final_citations),
         len(final_answer),
     )

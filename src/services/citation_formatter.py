@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Regex patterns
 # ---------------------------------------------------------------------------
-# Nhận diện tag [[cite_N]] hoặc [cite_N] trong câu trả lời LLM
-_CITE_TAG_RE = re.compile(r"\[{1,2}cite_(\d+)\]{1,2}", re.IGNORECASE)
+# Nhận diện tag [[cite_N]] hoặc [cite_N] hoặc 【cite_N】 trong câu trả lời LLM
+_CITE_TAG_RE = re.compile(r"[\[【]{1,2}cite[ _:-]?(\d+)[\]】]{1,2}", re.IGNORECASE)
 
 # Nhận diện số tài chính dạng tiền: 1.234.567 hoặc 1,234,567 hoặc 12,345.67
 _FINANCIAL_NUMBER_RE = re.compile(
@@ -103,20 +103,22 @@ class CitationFormatter:
         if existing_tags or not auto_inject:
             return answer
 
-        # Tự thêm reference list vào cuối câu trả lời
+        # Tự thêm reference list vào cuối câu trả lời nếu LLM hoàn toàn chưa chèn tag
         ref_lines = ["\n\n---\n**Nguồn trích dẫn:**"]
-        for c in citations:
+        for c in citations[:3]:
             source_label = "Thuyết minh" if c.source_type == "note" else "Báo cáo tài chính"
-            ref_lines.append(
-                f"- [[{c.citation_id}]] {source_label} — Trang {c.page}"
-                f" *(Block: `{c.block_id}`)*"
-            )
+            page_str = f"— Trang {c.page}" if c.page and c.page > 0 else ""
+            ref_lines.append(f"- [[{c.citation_id}]] {source_label} {page_str}".rstrip())
 
         return answer + "\n".join(ref_lines)
 
     def extract_cited_ids(self, answer: str) -> list[int]:
         """Trích xuất danh sách số thứ tự citation đã được gắn vào câu trả lời."""
         return [int(m) for m in _CITE_TAG_RE.findall(answer)]
+
+    def normalize_citation_tags(self, answer: str) -> str:
+        """Chuẩn hoá mọi biến thể tag [cite 1], [cite_1], [[cite 1]] về dạng chuẩn [[cite_N]]."""
+        return _CITE_TAG_RE.sub(r"[[cite_\1]]", answer)
 
     def to_api_payload(
         self,
@@ -181,6 +183,7 @@ class CitationFormatter:
         results: list[Any],  # list[RetrievalResult]
         max_tokens_estimate: int = 3000,
         chars_per_token: float = 3.0,
+        start_index: int = 1,
     ) -> str:
         """Xây dựng Context Block cho System Prompt từ danh sách RetrievalResult.
 
@@ -191,6 +194,7 @@ class CitationFormatter:
             results: Danh sách RetrievalResult từ HybridRetriever.
             max_tokens_estimate: Số tokens tối đa cho phần context (mặc định 3000).
             chars_per_token: Ước tính ký tự/token cho tiếng Việt (mặc định 3.0).
+            start_index: Số thứ tự bắt đầu cho citation tag (mặc định 1).
 
         Returns:
             Chuỗi văn bản context để chèn vào System Prompt.
@@ -199,7 +203,7 @@ class CitationFormatter:
         lines: list[str] = ["## 📄 Ngữ Cảnh Truy Xuất Từ Báo Cáo Tài Chính\n"]
         total_chars = 0
 
-        for i, result in enumerate(results, start=1):
+        for i, result in enumerate(results, start=start_index):
             cite_tag = f"cite_{i}"
             source_type = "Thuyết minh" if getattr(result, "is_note", False) else "Báo cáo tài chính"
             header = f"### [{cite_tag}] {source_type} — Trang {result.page}"
