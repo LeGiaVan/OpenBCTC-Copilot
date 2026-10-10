@@ -47,13 +47,56 @@
             transition: all 0.2s ease;
         }
         /* Styling for markdown content */
-        .markdown-body table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 1rem 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; font-size: 0.875rem; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05); }
-        .markdown-body th, .markdown-body td { border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; padding: 0.625rem 0.875rem; text-align: left; }
-        .markdown-body th:last-child, .markdown-body td:last-child { border-right: none; }
-        .markdown-body tr:last-child td { border-bottom: none; }
-        .markdown-body th { background-color: #f8fafc; font-weight: 600; color: #1e293b; }
-        .markdown-body tr:nth-child(even) td { background-color: #fbfcfe; }
-        .markdown-body tr:hover td { background-color: #f1f5f9; }
+        .markdown-body {
+            overflow-wrap: break-word;
+        }
+        .markdown-body table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 1.25rem 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 4px -1px rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+            background: #ffffff;
+        }
+        .markdown-body th {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            font-weight: 700;
+            color: #334155;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid #cbd5e1;
+            border-right: 1px solid #e2e8f0;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .markdown-body th:last-child {
+            border-right: none;
+        }
+        .markdown-body td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            border-right: 1px solid #f8fafc;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+        .markdown-body td:last-child {
+            border-right: none;
+        }
+        .markdown-body tr:last-child td {
+            border-bottom: none;
+        }
+        .markdown-body tr:nth-child(even) td {
+            background-color: #fbfcfe;
+        }
+        .markdown-body tr:hover td {
+            background-color: #f0f7ff;
+        }
         .markdown-body pre { background-color: #1f2937; color: #f9fafb; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem;}
         .markdown-body p { margin-bottom: 0.75rem; }
         
@@ -148,6 +191,10 @@
     <script>
         // --- State ---
         let currentCitations = [];
+        let allCitationsMap = {};        // Map lưu toàn bộ citations: "cite_1", "1", "cite_2", "2"...
+        let messageCitationsMap = {};    // Map theo từng tin nhắn: msgId -> array of citations
+        let globalCitationOffset = 0;   // Offset tăng dần theo số lượng cite thực tế qua các lượt chat
+        let messageCounter = 0;
         let pdfDoc = null;
         let pageNum = 1;
         let pageRendering = false;
@@ -167,6 +214,7 @@
         // Global State
         let CURRENT_COMPANY = 'VNM';
         let CURRENT_YEAR = 2025;
+        let CURRENT_THREAD_ID = 'session_' + Math.random().toString(36).substring(2, 10);
 
         // Fetch danh sách Documents
         async function loadDocuments() {
@@ -204,6 +252,13 @@
         function selectDocument(doc) {
             CURRENT_COMPANY = doc.company;
             CURRENT_YEAR = doc.year;
+            CURRENT_THREAD_ID = 'session_' + Math.random().toString(36).substring(2, 10);
+            // Reset citation store cho tài liệu mới
+            allCitationsMap = {};
+            messageCitationsMap = {};
+            globalCitationOffset = 0;
+            messageCounter = 0;
+            currentCitations = [];
             
             // Cập nhật UI (Fade out selector, fade in panes)
             document.getElementById('doc-selector').classList.add('opacity-0', 'pointer-events-none');
@@ -252,8 +307,17 @@
         } // ĐÓNG NGOẶC HÀM loadPDF() TẠI ĐÂY!
 
         function highlightBbox(bbox) {
-            if (!bboxLayer || !bbox || bbox.length !== 4) return;
+            if (!bboxLayer) return;
             bboxLayer.innerHTML = '';
+
+            if (!bbox || bbox.length !== 4) {
+                // Không có bbox (3 BCTC cốt lõi) -> Cuộn mượt lên đầu trang
+                const container = document.getElementById('pdf-container');
+                if (container) {
+                    container.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+                return;
+            }
 
             // BBox thực tế từ Qdrant/OCR là chuẩn [xmin, ymin, xmax, ymax] (0.0 -> 1.0)
             const [xmin, ymin, xmax, ymax] = bbox;
@@ -312,10 +376,8 @@
 
                 renderTask.promise.then(function() {
                     pageRendering = false;
-                    if (pendingBbox) {
-                        highlightBbox(pendingBbox);
-                        pendingBbox = null;
-                    }
+                    highlightBbox(pendingBbox);
+                    pendingBbox = null;
                     if (pageNumPending !== null) {
                         renderPage(pageNumPending);
                         pageNumPending = null;
@@ -360,37 +422,48 @@
             if (!text) return '';
             let cleaned = text;
 
-            // 1. Khắc phục bảng Markdown dính trên 1 dòng đơn:
-            // Tách các hàng kết thúc bằng || hoặc | | thành dòng mới |\n|
-            cleaned = cleaned.replace(/\|\s*\|(?=[ -|:])/g, '|\n|');
-            
-            // 2. Tách nếu dòng mở đầu bảng (| Cột 1 | Cột 2 |) dính ngay sau chữ mà không có dòng trống
-            cleaned = cleaned.replace(/([^\n])\n?(\| [^\n]+\|)/g, '$1\n\n$2');
-            
-            // 3. Chuẩn hoá danh sách gạch đầu dòng (-) bị dính liền trên 1 dòng đơn:
-            // a. Tách sau dấu hai chấm hoặc chấm trước gạch đầu dòng: "bao gồm:- " -> "bao gồm:\n\n- "
+            // 1. Tách các tiêu đề section dính liền như '--## 2' hoặc '--###' hoặc '## 2'
+            cleaned = cleaned.replace(/--\s*##\s*(\d+)?/g, '\n\n### $1');
+
+            // 2. Tách nếu một dòng có văn bản thường/tiêu đề rồi mới đến bảng:
+            // Ví dụ: '**Tiêu đề**  | Cột 1 | Cột 2 |' -> '**Tiêu đề**\n\n| Cột 1 | Cột 2 |'
+            cleaned = cleaned.replace(/([^\n|]+?)\s*(\|(?:\s*[^|\n]+\s*\|){2,}\s*)(?=\n\|[-: ]+\|)/g, '$1\n\n$2');
+
+            // 3. Tách nếu có text thường ngay trên bảng mà thiếu dòng trống \n\n:
+            // (CommonMark table bắt buộc phải có dòng trống phân cách với đoạn văn trước nó)
+            cleaned = cleaned.replace(/([^\n|])\n(\|(?:\s*[^|\n]+\s*\|)+\n\|[-: ]+\|)/g, '$1\n\n$2');
+
+            // 4. Khắc phục bảng Markdown dính trên 1 dòng đơn (nếu có):
+            // Chuyển đổi mọi chỗ '||' hoặc '|||' (giáp nối giữa các hàng bảng) thành '|\n|'
+            cleaned = cleaned.replace(/\|{2,}/g, '|\n|');
+
+            // 5. Chuẩn hoá danh sách gạch đầu dòng (-) bị dính liền trên 1 dòng đơn:
             cleaned = cleaned.replace(/([:;.])\s*-\s*/g, '$1\n\n- ');
-            // b. Tách giữa các item danh sách có tag cite hoặc ngoặc đóng: " [cite_2] - " -> " [cite_2]\n- "
             cleaned = cleaned.replace(/(\[[^\]]+\]|\))\s*-\s*/g, '$1\n- ');
-            // c. Tách gạch đầu dòng đứng sau bất kỳ ký tự nào không phải xuống dòng
             cleaned = cleaned.replace(/(?<=[^\n])\s+-\s*/g, '\n- ');
 
-            // 4. Xoá mọi chuỗi debug thô *(Block: ...)* hoặc (Block: ...) nếu còn sót
+            // 6. Xoá mọi chuỗi debug thô *(Block: ...)* hoặc (Block: ...) nếu còn sót
             cleaned = cleaned.replace(/\s*\*?\s*\(Block:\s*[^)]+\)\s*\*?/gi, '');
-            
+
             return cleaned;
         }
 
         // Hàm regex xử lý mọi loại ngoặc [cite_1], [[cite_1]], [cite 1], [[cite 1]], 【cite 1】
-        function replaceCitations(text) {
-            return text.replace(/[\[【]+cite[ _:-]?(\d+)[\]】]+/gi, (match, id) => {
-                return `<span class="citation-tag" onclick="jumpToCitation('${id}')">[cite_${id}]</span>`;
+        // Tự động map sang Global Citation ID duy nhất trong toàn bộ đoạn chat để không bao giờ bị ghi đè
+        function replaceCitations(text, offset = 0, msgId = '') {
+            if (!text) return '';
+            return text.replace(/[\[【]+cite[ _:-]?(\d+)[\]】]+/gi, (match, idStr) => {
+                const localId = parseInt(idStr, 10);
+                const globalId = localId + offset;
+                const msgParam = msgId ? `'${msgId}'` : 'null';
+                return `<span class="citation-tag" onclick="jumpToCitation('${globalId}', ${msgParam})" title="Trích dẫn [cite_${globalId}]">[cite_${globalId}]</span>`;
             });
         }
 
-        function appendMessage(sender, text, isMarkdown = false, meta = null) {
+        function appendMessage(sender, text, isMarkdown = false, meta = null, msgId = null, msgOffset = 0) {
             const div = document.createElement('div');
             div.className = "flex gap-4 fade-in mb-4";
+            if (msgId) div.dataset.msgId = msgId;
             
             const isUser = sender === 'User';
             const iconBg = isUser ? 'bg-indigo-100 text-indigo-700' : 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md';
@@ -399,7 +472,7 @@
             let contentHTML = isMarkdown ? marked.parse(cleanMarkdown(text)) : text;
             
             if (!isUser) {
-                contentHTML = replaceCitations(contentHTML);
+                contentHTML = replaceCitations(contentHTML, msgOffset, msgId);
             }
 
             let metaHTML = '';
@@ -419,7 +492,7 @@
                 <div class="w-8 h-8 rounded-full ${iconBg} flex items-center justify-center font-bold shrink-0 text-sm">
                     ${isUser ? 'U' : 'AI'}
                 </div>
-                <div class="p-4 rounded-2xl shadow-sm border max-w-[85%] text-sm ${bubbleBg} text-gray-800">
+                <div class="p-4 rounded-2xl shadow-sm border max-w-[92%] text-sm ${bubbleBg} text-gray-800">
                     <div class="markdown-body leading-relaxed content-area">${contentHTML}</div>
                     <div class="meta-area">${metaHTML}</div>
                 </div>
@@ -429,15 +502,55 @@
             return div;
         }
 
-        window.jumpToCitation = function(id) {
-            const cite = currentCitations.find(c => 
-                c.citation_id === `cite_${id}` || 
-                c.citation_id === `cite ${id}` || 
-                c.citation_id === String(id) ||
-                (c.citation_id && c.citation_id.endsWith(`_${id}`))
-            );
+        window.jumpToCitation = function(id, msgId) {
+            let cite = null;
+
+            // 1. Tra cứu trực tiếp theo Global ID từ allCitationsMap
+            if (allCitationsMap[`cite_${id}`]) {
+                cite = allCitationsMap[`cite_${id}`];
+            } else if (allCitationsMap[String(id)]) {
+                cite = allCitationsMap[String(id)];
+            }
+
+            // 2. Tra cứu trong tin nhắn cụ thể nếu có msgId
+            if (!cite && msgId && messageCitationsMap[msgId]) {
+                cite = messageCitationsMap[msgId].find(c => 
+                    c.global_id === `cite_${id}` || 
+                    c.global_num === parseInt(id, 10) ||
+                    c.citation_id === `cite_${id}` || 
+                    c.local_id === `cite_${id}` ||
+                    String(c.global_id).endsWith(`_${id}`)
+                );
+            }
+
+            // 3. Fallback: tra cứu trong messageCitationsMap của bất kỳ tin nhắn nào
             if (!cite) {
-                console.warn("Citation not found for id:", id, "Available citations:", currentCitations);
+                for (const mId in messageCitationsMap) {
+                    const found = messageCitationsMap[mId].find(c => 
+                        c.global_id === `cite_${id}` || 
+                        c.global_num === parseInt(id, 10) ||
+                        c.citation_id === `cite_${id}` ||
+                        String(c.citation_id).endsWith(`_${id}`)
+                    );
+                    if (found) {
+                        cite = found;
+                        break;
+                    }
+                }
+            }
+
+            // 4. Fallback cuối cùng: currentCitations
+            if (!cite && currentCitations) {
+                cite = currentCitations.find(c => 
+                    c.citation_id === `cite_${id}` || 
+                    c.citation_id === `cite ${id}` || 
+                    c.citation_id === String(id) ||
+                    (c.citation_id && c.citation_id.endsWith(`_${id}`))
+                );
+            }
+
+            if (!cite) {
+                console.warn("Citation not found for id:", id, "Available citations:", Object.keys(allCitationsMap));
                 return;
             }
 
@@ -455,6 +568,17 @@
             }
         };
 
+        window.sendSuggestion = function(text) {
+            queryInput.value = text;
+            chatForm.dispatchEvent(new Event('submit'));
+        };
+
+        window.focusChatInput = function() {
+            queryInput.focus();
+            queryInput.select();
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        };
+
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const query = queryInput.value.trim();
@@ -467,7 +591,10 @@
             btn.disabled = true;
             btn.innerHTML = `Đang nghĩ...`;
 
-            const aiMsgDiv = appendMessage('AI', '...');
+            const msgId = 'msg_' + (++messageCounter);
+            const msgOffset = globalCitationOffset;
+
+            const aiMsgDiv = appendMessage('AI', '...', false, null, msgId, msgOffset);
             const aiContent = aiMsgDiv.querySelector('.content-area');
             const aiMeta = aiMsgDiv.querySelector('.meta-area');
             
@@ -478,47 +605,120 @@
                     body: JSON.stringify({ 
                         query: query, 
                         company: CURRENT_COMPANY, 
-                        year: CURRENT_YEAR 
+                        year: CURRENT_YEAR,
+                        thread_id: CURRENT_THREAD_ID
                     })
                 });
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let answerText = '';
+                let buffer = '';
                 
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) break;
                     
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Giữ lại phần chưa có ký tự xuống dòng
                     
                     for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const dataStr = line.slice(6).replace(/\r$/, ''); // Chỉ xoá \r để giữ lại dấu cách của token
+                        const trimmedLine = line.trim();
+                        if (trimmedLine.startsWith('data:')) {
+                            const dataStr = trimmedLine.slice(5).trim();
                             if (dataStr === '[DONE]') break;
                             
                             try {
-                                const meta = JSON.parse(dataStr);
-                                if (meta.citations) {
-                                    currentCitations = meta.citations;
+                                const parsed = JSON.parse(dataStr);
+                                if (parsed.token !== undefined) {
+                                    if (answerText === '...') answerText = '';
+                                    answerText += parsed.token;
+                                } else if (parsed.citations) {
+                                    currentCitations = parsed.citations;
+                                    const msgCitations = [];
+
+                                    parsed.citations.forEach((c, idx) => {
+                                        const match = c.citation_id ? String(c.citation_id).match(/\d+/) : null;
+                                        const localNum = match ? parseInt(match[0], 10) : (idx + 1);
+                                        const globalNum = localNum + msgOffset;
+                                        const globalId = `cite_${globalNum}`;
+
+                                        const mappedCite = {
+                                            ...c,
+                                            global_id: globalId,
+                                            global_num: globalNum,
+                                            local_id: c.citation_id || `cite_${localNum}`
+                                        };
+
+                                        allCitationsMap[globalId] = mappedCite;
+                                        allCitationsMap[String(globalNum)] = mappedCite;
+                                        msgCitations.push(mappedCite);
+                                    });
+
+                                    messageCitationsMap[msgId] = msgCitations;
+
+                                    let maxLocalNum = parsed.citations.length;
+                                    parsed.citations.forEach((c) => {
+                                        const match = c.citation_id ? String(c.citation_id).match(/\d+/) : null;
+                                        if (match) {
+                                            const num = parseInt(match[0], 10);
+                                            if (num > maxLocalNum) maxLocalNum = num;
+                                        }
+                                    });
+                                    globalCitationOffset += maxLocalNum;
+
                                     let statusColor = "bg-gray-100 text-gray-700";
-                                    if (meta.fact_check === 'FactCheckStatus.PASSED') statusColor = "bg-green-100 text-green-700 border-green-200";
-                                    if (meta.fact_check === 'FactCheckStatus.FAILED') statusColor = "bg-red-100 text-red-700 border-red-200";
-                                    aiMeta.innerHTML = `
+                                    if (parsed.fact_check === 'FactCheckStatus.PASSED') statusColor = "bg-green-100 text-green-700 border-green-200";
+                                    if (parsed.fact_check === 'FactCheckStatus.FAILED') statusColor = "bg-red-100 text-red-700 border-red-200";
+                                    
+                                    let metaContent = `
                                     <div class="mt-3 pt-3 border-t border-gray-100 flex gap-2 text-xs flex-wrap">
-                                        <span class="px-2 py-1 rounded bg-gray-100 text-gray-600 font-mono">Intent: ${meta.intent}</span>
-                                        <span class="px-2 py-1 rounded border ${statusColor} font-mono">Fact-Check: ${meta.fact_check || 'N/A'}</span>
+                                        <span class="px-2 py-1 rounded bg-gray-100 text-gray-600 font-mono">Intent: ${parsed.intent}</span>
+                                        <span class="px-2 py-1 rounded border ${statusColor} font-mono">Fact-Check: ${parsed.fact_check || 'N/A'}</span>
                                     </div>`;
+
+                                    // Nếu câu trả lời là dạng không tìm thấy dữ liệu hoặc không có citation:
+                                    const isNoData = (!parsed.citations || parsed.citations.length === 0) && 
+                                        (/không tìm thấy dữ liệu/i.test(answerText) || /không có dữ liệu/i.test(answerText) || /gợi ý tra cứu/i.test(answerText));
+                                    
+                                    if (isNoData) {
+                                        metaContent += `
+                                        <div class="mt-3 pt-3 border-t border-gray-100">
+                                            <div class="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1">
+                                                <span>💡 Bấm để tra cứu nhanh hoặc gõ lại câu hỏi:</span>
+                                            </div>
+                                            <div class="flex flex-wrap gap-2 text-xs">
+                                                <button type="button" class="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all font-medium flex items-center gap-1 shadow-sm active:scale-95" onclick="sendSuggestion('Báo cáo kết quả hoạt động kinh doanh')">
+                                                    📊 Báo cáo kết quả HĐKD
+                                                </button>
+                                                <button type="button" class="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all font-medium flex items-center gap-1 shadow-sm active:scale-95" onclick="sendSuggestion('Doanh thu thuần và lợi nhuận sau thuế năm 2025')">
+                                                    💰 Doanh thu & Lợi nhuận
+                                                </button>
+                                                <button type="button" class="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all font-medium flex items-center gap-1 shadow-sm active:scale-95" onclick="sendSuggestion('Tổng tài sản và vốn chủ sở hữu')">
+                                                    🏢 Tổng tài sản & Vốn CSH
+                                                </button>
+                                                <button type="button" class="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all font-medium flex items-center gap-1 shadow-sm active:scale-95" onclick="sendSuggestion('Thù lao của các thành viên HĐQT là bao nhiêu')">
+                                                    👥 Thù lao HĐQT
+                                                </button>
+                                                <button type="button" class="px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 transition-all font-medium flex items-center gap-1 shadow-sm active:scale-95" onclick="focusChatInput()">
+                                                    ✏️ Gõ lại câu hỏi
+                                                </button>
+                                            </div>
+                                        </div>`;
+                                    }
+
+                                    aiMeta.innerHTML = metaContent;
                                 }
                             } catch(e) {
+                                // Fallback nếu server trả về text thô
                                 if (answerText === '...') answerText = '';
                                 answerText += dataStr;
                             }
                             
-                            // Luôn luôn parse Markdown và replace Citations sau mỗi token
+                            // Parse Markdown và replace Citations sau mỗi token
                             let contentHTML = marked.parse(cleanMarkdown(answerText));
-                            contentHTML = replaceCitations(contentHTML);
+                            contentHTML = replaceCitations(contentHTML, msgOffset, msgId);
                             aiContent.innerHTML = contentHTML;
                             chatHistory.scrollTop = chatHistory.scrollHeight;
                         }

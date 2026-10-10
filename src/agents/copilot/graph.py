@@ -39,6 +39,7 @@ from langgraph.graph import END, START, StateGraph
 
 from src.agents.copilot.nodes import (
     citation_verify_node,
+    clarify_node,
     fact_verify_node,
     hybrid_node,
     should_correct,
@@ -57,11 +58,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 def _get_langfuse_callbacks() -> list[Any]:
     """Trả về Langfuse callback handler nếu cấu hình env đầy đủ."""
-    if not os.getenv("LANGFUSE_SECRET_KEY"):
+    from src.core.config import settings
+
+    if not settings.LANGFUSE_SECRET_KEY or settings.LANGFUSE_SECRET_KEY.startswith("sk-lf-..."):
         return []
     try:
         from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
-        handler = LangfuseCallbackHandler()
+        handler = LangfuseCallbackHandler(
+            public_key=settings.LANGFUSE_PUBLIC_KEY,
+            secret_key=settings.LANGFUSE_SECRET_KEY,
+            host=settings.LANGFUSE_HOST,
+        )
         logger.info("✅ Langfuse callback đã gắn.")
         return [handler]
     except ImportError:
@@ -97,7 +104,8 @@ def build_copilot_graph(
     """
     # --- Bind services vào nodes (Partial Application) ---
     # Đây là cách Lean Architecture inject dependency mà không dùng global state
-    _sql_node = functools.partial(sql_node, sql_svc=sql_svc)
+    _router_node = functools.partial(router_node, llm=llm)
+    _sql_node = functools.partial(sql_node, sql_svc=sql_svc, retriever=retriever)
     _vector_node = functools.partial(vector_node, retriever=retriever)
     _hybrid_node = functools.partial(hybrid_node, sql_svc=sql_svc, retriever=retriever)
     _synthesize_node = functools.partial(synthesize_node, llm=llm)
@@ -107,7 +115,8 @@ def build_copilot_graph(
     builder = StateGraph(CopilotState)
 
     # Đăng ký tất cả nodes
-    builder.add_node("router", router_node)
+    builder.add_node("router", _router_node)
+    builder.add_node("clarify_node", clarify_node)
     builder.add_node("sql_node", _sql_node)
     builder.add_node("vector_node", _vector_node)
     builder.add_node("hybrid_node", _hybrid_node)
@@ -119,16 +128,20 @@ def build_copilot_graph(
     # START → router
     builder.add_edge(START, "router")
 
-    # router → [sql_node | vector_node | hybrid_node] (Conditional Edge)
+    # router → [clarify_node | sql_node | vector_node | hybrid_node] (Conditional Edge)
     builder.add_conditional_edges(
         "router",
         route_by_intent,
         {
+            "clarify_node": "clarify_node",
             "sql_node": "sql_node",
             "vector_node": "vector_node",
             "hybrid_node": "hybrid_node",
         },
     )
+
+    # clarify_node → END (Phản hồi làm rõ câu hỏi trực tiếp, không qua retrieval/synthesis)
+    builder.add_edge("clarify_node", END)
 
     # Tất cả retrieval nodes → synthesize
     builder.add_edge("sql_node", "synthesize")
@@ -200,6 +213,7 @@ def run_query(
         "year": year,
         # Khởi tạo giá trị mặc định cho các field bắt buộc
         "intent": None,
+        "clarification_prompt": None,
         "sql_result": None,
         "sql_context": "",
         "vector_results": [],

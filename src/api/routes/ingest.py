@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
+from src.core.config import settings
 from src.models.block import JSONBlock, BlockMetadata
 from src.services.chunker import LayoutAwareChunker
 from src.services.vector_engine import VectorEngineService
@@ -32,8 +33,8 @@ def execute_ingest(company: str, year: int) -> int:
     # 1. Thử lấy từ MongoDB Collection 'document_blocks'
     try:
         from src.services.mongo_service import MongoGridFSService
-        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-        mongo_db = os.getenv("MONGO_DB", "openbctc")
+        mongo_uri = settings.MONGO_URI
+        mongo_db = settings.MONGO_DB
         mongo = MongoGridFSService(uri=mongo_uri, db_name=mongo_db)
         getter = getattr(mongo, "get_document_blocks_sync", getattr(mongo, "get_blocks_sync", None))
         raw_blocks = getter(comp_upper, year) if getter else []
@@ -76,13 +77,13 @@ def execute_ingest(company: str, year: int) -> int:
         logger.error("Không tìm thấy blocks nào cho [%s - %s] để nạp vào Qdrant!", comp_upper, year)
         return 0
 
-    # 3. Layout-Aware Semantic Chunking
-    chunker = LayoutAwareChunker(min_chars=250, max_chars=800)
+    # 3. Layout-Aware Semantic Chunking (Config-driven params)
+    chunker = LayoutAwareChunker(min_chars=settings.CHUNK_MIN_CHARS, max_chars=settings.CHUNK_MAX_CHARS)
     chunks = chunker.chunk_blocks(blocks)
     logger.info("Đã gom thành %d semantic chunks tối ưu", len(chunks))
 
     # 4. Nạp vào Qdrant (Ưu tiên QDRANT_URL container, fallback sang local storage)
-    qdrant_url = os.getenv("QDRANT_URL")
+    qdrant_url = settings.QDRANT_URL
     if qdrant_url:
         vec_svc = VectorEngineService(url=qdrant_url)
     else:

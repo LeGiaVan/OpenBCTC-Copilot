@@ -17,7 +17,12 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - LLM_BASE_URL=${LLM_BASE_URL:-}
+      # Cache AI Models để không bao giờ phải tải lại qua mạng
+      - HF_HOME=/home/appuser/.cache/huggingface
+      - FASTEMBED_CACHE_PATH=/home/appuser/.cache/fastembed
       # Vector DB (Qdrant)
       - QDRANT_URL=http://qdrant:6333
       # Document Storage (MongoDB)
@@ -28,9 +33,12 @@ services:
         condition: service_started
       mongodb:
         condition: service_started
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
+      - ./src:/app/src # Đồng bộ mã nguồn thời gian thực (Hot Reload)
       - ./data:/app/data # Cầu nối để Backend trong Docker truy cập SQLite
       - ../OpenBCTC/outputs:/app/outputs:ro # Mount thư mục đầu ra của OpenBCTC làm nguồn facts
+      - hf_cache:/home/appuser/.cache # Lưu vĩnh viễn AI model weights (tránh tải lại)
     networks:
       - openbctc-net
 
@@ -82,3 +90,4 @@ services:
 volumes:
   qdrant_data:
   mongodb_data:
+  hf_cache:

@@ -10,6 +10,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 from ingestion.parsers.json_block_loader import JSONBlockLoader
 from ingestion.parsers.md_hierarchy_parser import MarkdownHierarchyParser
+from src.core.config import settings
 from src.services.chunker import LayoutAwareChunker
 from src.services.sql_engine import SQLiteFactService
 from src.services.vector_engine import VectorEngineService
@@ -44,8 +45,8 @@ def main() -> None:
     parser.add_argument(
         "--qdrant-url",
         type=str,
-        default=None,
-        help="URL kết nối tới Qdrant server (ví dụ: http://localhost:6333)",
+        default=settings.QDRANT_URL,
+        help="URL kết nối tới Qdrant server (mặc định lấy từ cấu hình)",
     )
     parser.add_argument("--company", type=str, default="VNM", help="Mã cổ phiếu")
     parser.add_argument("--year", type=int, default=2025, help="Năm tài chính")
@@ -80,7 +81,7 @@ def main() -> None:
 
     # 4. Layout-Aware Semantic Chunking (Gom khối & Enclosing BBox)
     print("\n🧩 [4/5] Thực hiện Layout-Aware Semantic Chunking & Enclosing BBox...")
-    chunker = LayoutAwareChunker(min_chars=250, max_chars=800)
+    chunker = LayoutAwareChunker(min_chars=settings.CHUNK_MIN_CHARS, max_chars=settings.CHUNK_MAX_CHARS)
     chunks = chunker.chunk_blocks(blocks)
     avg_len = sum(len(c.content) for c in chunks) / len(chunks) if chunks else 0
     print(f"   -> Đã tinh chế từ {len(blocks)} raw blocks thành {len(chunks)} Semantic Chunks tối ưu")

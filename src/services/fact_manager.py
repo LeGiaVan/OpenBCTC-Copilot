@@ -46,8 +46,9 @@ class FactServiceManager:
         cache_path = cache_dir / f"benchmark_{company.lower()}_{year}.db"
         if not cache_path.exists():
             try:
+                from src.core.config import settings
                 from src.services.mongo_service import MongoGridFSService
-                mongo = MongoGridFSService(uri=os.getenv("MONGO_URI", "mongodb://localhost:27017"))
+                mongo = MongoGridFSService(uri=settings.MONGO_URI, db_name=settings.MONGO_DB)
                 cache_path.parent.mkdir(parents=True, exist_ok=True)
                 grid_out = mongo.sync_fs.find_one({"filename": f"benchmark_{company.lower()}_{year}.db"})
                 if grid_out:

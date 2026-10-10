@@ -1,4 +1,5 @@
 import os
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -8,6 +9,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
+from src.core.config import settings
 from src.agents.copilot.graph import build_copilot_graph
 from src.services.sql_engine import SQLiteFactService
 from src.services.vector_engine import VectorEngineService
@@ -19,27 +23,54 @@ from src.services.fact_manager import DynamicFactService
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Khởi tạo services và graph khi startup
-    sql_svc = DynamicFactService(base_dir=os.getenv("FACTS_BASE_DIR", "/app/data"))
+    sql_svc = DynamicFactService(base_dir=settings.FACTS_BASE_DIR)
     
-    qdrant_url = os.getenv("QDRANT_URL", "http://qdrant:6333")
+    qdrant_url = settings.QDRANT_URL
     try:
         vec_svc = VectorEngineService(url=qdrant_url)
     except Exception:
         vec_svc = VectorEngineService(path="data/qdrant_storage")
     retriever = HybridRetriever(vec_svc=vec_svc)
     
-    api_key = os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
-    base_url = os.getenv("LLM_BASE_URL")
-    if not base_url:
-        if os.getenv("GROQ_API_KEY"):
-            base_url = "https://api.groq.com/openai/v1"
-        elif os.getenv("OPENROUTER_API_KEY"):
-            base_url = "https://openrouter.ai/api/v1"
-            
-    model_name = os.getenv("OPENAI_MODEL", "openai/gpt-oss-120b")
+    # Warm-up pre-load AI models lúc server khởi động để tránh cold start khi user hỏi lần đầu
+    logger.info("🔥 Đang khởi động warm-up AI models (Dense, Sparse, Reranker)...")
+    try:
+        _ = vec_svc.dense_model
+        _ = vec_svc.sparse_model
+        if retriever.use_reranker:
+            _ = retriever.reranker
+        logger.info("✅ Warm-up hoàn tất: Tất cả AI models đã sẵn sàng trong RAM.")
+    except Exception as e:
+        logger.warning("Cảnh báo trong quá trình warm-up models: %s", e)
+    
+    # Xác định đúng Provider (Groq, OpenAI hoặc OpenRouter)
+    groq_key = settings.GROQ_API_KEY
+    openai_key = settings.OPENAI_API_KEY
+    openrouter_key = settings.OPENROUTER_API_KEY
+    
+    base_url = settings.LLM_BASE_URL
+    model_name = settings.LLM_MODEL
+    
+    if groq_key and not settings.FORCE_OPENAI:
+        api_key = groq_key
+        base_url = base_url or "https://api.groq.com/openai/v1"
+        model_name = model_name or settings.GROQ_MODEL
+    elif openai_key:
+        api_key = openai_key
+        base_url = base_url or settings.OPENAI_BASE_URL
+        model_name = model_name or settings.OPENAI_MODEL
+    elif openrouter_key:
+        api_key = openrouter_key
+        base_url = base_url or "https://openrouter.ai/api/v1"
+        model_name = model_name or "openai/gpt-oss-120b"
+    else:
+        api_key = "dummy-api-key"
+        model_name = "openai/gpt-oss-120b"
+
+    logger.info("🤖 Khởi tạo LLM: Provider model=%s, base_url=%s", model_name, base_url)
     llm = ChatOpenAI(
         model=model_name,
-        api_key=api_key or "dummy-api-key",
+        api_key=api_key,
         base_url=base_url,
         temperature=0
     )

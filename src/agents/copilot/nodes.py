@@ -38,15 +38,31 @@ _FINANCIAL_NUM_RE = re.compile(
 _MAX_CORRECTION_ATTEMPTS = 2
 
 
+def _get_statement_name_by_page(page: int) -> str:
+    """Trả về tên 3 Báo cáo tài chính cốt lõi dựa theo số trang PDF (Thông tư 200/2014/TT-BTC)."""
+    if page in (7, 8, 9):
+        return "Báo cáo tình hình tài chính (Bảng Cân đối kế toán)"
+    elif page == 10:
+        return "Báo cáo kết quả hoạt động kinh doanh"
+    elif page in (11, 12):
+        return "Báo cáo lưu chuyển tiền tệ"
+    elif page <= 6:
+        return "Báo cáo tài chính"
+    else:
+        return "Thuyết minh BCTC"
+
+
 # ===========================================================================
 # Phase 3.2 — Fat Service Caller Nodes
 # ===========================================================================
-def sql_node(state: CopilotState, *, sql_svc: Any) -> dict:
+def sql_node(state: CopilotState, *, sql_svc: Any, retriever: Any = None) -> dict:
     """Node: Gọi SQLiteFactService và format ngữ cảnh SQL kèm Visual Citations.
+    Nếu khoản mục hỏi là chi tiết chuyên sâu thuộc Thuyết minh -> Tự động Fallback sang Vector Search.
 
     Args:
         state: LangGraph state hiện tại.
         sql_svc: SQLiteFactService instance (inject từ graph builder).
+        retriever: HybridRetriever instance (optional, dùng cho fallback).
 
     Returns:
         Patch dict cập nhật sql_result, sql_context và citations.
@@ -82,112 +98,283 @@ def sql_node(state: CopilotState, *, sql_svc: Any) -> dict:
             "doanh thu thuần": ["NET_REVENUE"],
             "doanh thu bán hàng": ["GROSS_REVENUE"],
             "doanh thu": ["NET_REVENUE", "GROSS_REVENUE", "FINANCIAL_INCOME"],
+            "giá vốn": ["COGS"],
             "tổng tài sản": ["TOTAL_ASSETS"],
             "tài sản ngắn hạn": ["CURRENT_ASSETS"],
             "tài sản dài hạn": ["NON_CURRENT_ASSETS"],
-            "vốn chủ sở hữu": ["TOTAL_EQUITY"],
-            "nợ phải trả": ["TOTAL_LIABILITIES"],
+            "vốn chủ sở hữu": ["TOTAL_EQUITY", "EQUITY", "OWNERS_EQUITY_TOTAL"],
+            "vốn chủ": ["TOTAL_EQUITY", "EQUITY"],
+            "nợ phải trả": ["TOTAL_LIABILITIES", "LIABILITIES"],
             "nợ ngắn hạn": ["CURRENT_LIABILITIES"],
             "nợ dài hạn": ["NON_CURRENT_LIABILITIES"],
             "tiền và tương đương tiền": ["CASH_AND_EQUIVALENTS"],
             "tiền": ["CASH_AND_EQUIVALENTS", "CASH"],
+            "đầu tư tài chính ngắn hạn": ["SHORT_TERM_INVESTMENTS", "HELD_TO_MATURITY_INVESTMENTS_SHORT"],
+            "đầu tư ngắn hạn": ["SHORT_TERM_INVESTMENTS"],
+            "phải thu ngắn hạn": ["SHORT_TERM_RECEIVABLES"],
+            "phải thu khách hàng": ["SHORT_TERM_TRADE_RECEIVABLES"],
             "hàng tồn kho": ["INVENTORIES"],
-            "lợi nhuận sau thuế": ["NET_INCOME"],
+            "lợi nhuận sau thuế": ["NET_INCOME", "NET_PROFIT"],
             "lợi nhuận trước thuế": ["PROFIT_BEFORE_TAX"],
             "lợi nhuận thuần": ["OPERATING_PROFIT"],
-            "lợi nhuận": ["GROSS_PROFIT", "NET_INCOME", "OPERATING_PROFIT"],
+            "lợi nhuận hoạt động": ["OPERATING_PROFIT"],
+            "lợi nhuận": ["GROSS_PROFIT", "NET_PROFIT", "NET_INCOME", "OPERATING_PROFIT"],
             "chi phí tài chính": ["FINANCIAL_EXPENSES"],
             "chi phí bán hàng": ["SELLING_EXPENSES"],
-            "chi phí quản lý": ["GENERAL_ADMIN_EXPENSES"],
-            "lưu chuyển tiền": ["CASH_FROM_OPERATIONS", "CASH_FROM_INVESTING"],
-            "khấu hao": ["DEPRECIATION"],
+            "kết quả hoạt động kinh doanh": ["GROSS_REVENUE", "NET_REVENUE", "COGS", "GROSS_PROFIT", "FINANCIAL_INCOME", "FINANCIAL_EXPENSES", "SELLING_EXPENSES", "ADMIN_EXPENSES", "OPERATING_PROFIT", "PROFIT_BEFORE_TAX", "NET_INCOME"],
+            "kết quả kinh doanh": ["GROSS_REVENUE", "NET_REVENUE", "COGS", "GROSS_PROFIT", "FINANCIAL_INCOME", "FINANCIAL_EXPENSES", "SELLING_EXPENSES", "ADMIN_EXPENSES", "OPERATING_PROFIT", "PROFIT_BEFORE_TAX", "NET_INCOME"],
+            "bảng cân đối kế toán": ["TOTAL_ASSETS", "CURRENT_ASSETS", "NON_CURRENT_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY", "CASH_AND_EQUIVALENTS"],
+            "cân đối kế toán": ["TOTAL_ASSETS", "CURRENT_ASSETS", "NON_CURRENT_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY", "CASH_AND_EQUIVALENTS"],
+            "lưu chuyển tiền tệ": ["CF_NET_OPERATING", "CASH_FROM_OPERATIONS", "CF_NET_INVESTING", "CF_NET_FINANCING", "CF_NET_CHANGE", "CF_ENDING_CASH"],
+            "lưu chuyển tiền": ["CASH_FROM_OPERATIONS", "CF_NET_OPERATING", "CF_NET_INVESTING", "CF_NET_FINANCING"],
+            "dòng tiền": ["CASH_FROM_OPERATIONS", "CF_NET_OPERATING"],
+            "khấu hao": ["DEPRECIATION", "CF_DEPRECIATION"],
         }
 
-        # Kiểm tra xem câu hỏi có chứa từ khoá tài chính / số liệu không
-        FINANCIAL_METRIC_KEYWORDS = [
-            "bao nhiêu", "giá trị", "số liệu", "chỉ số", "chỉ tiêu", "mã số",
-            "doanh thu", "lợi nhuận", "tổng tài sản", "tài sản", "vốn chủ",
-            "nợ phải trả", "nợ ngắn hạn", "nợ dài hạn", "chi phí", "dòng tiền",
-            "lưu chuyển tiền", "tiền mặt", "hàng tồn kho", "roe", "roa", "ros",
-            "ebitda", "biên lợi nhuận", "tăng trưởng", "triệu đồng", "tỷ đồng",
-            "nghìn đồng", "vnd", "usd", "%", "cuối kỳ", "đầu kỳ",
-        ]
-        is_metric_q = any(k in q_lower for k in FINANCIAL_METRIC_KEYWORDS)
-
-        target_concepts = []
-        for phrase, concepts in CONCEPT_KEYWORD_MAP.items():
-            if phrase in q_lower:
-                target_concepts.extend(concepts)
+        # Nhận diện nếu câu hỏi hỏi tổng quan toàn bộ chỉ số / hệ CSDL
+        is_all_metrics = any(
+            w in q_lower
+            for w in [
+                "tất cả", "toàn bộ", "các chỉ số", "danh sách",
+                "hệ cơ sở dữ liệu", "cơ sở dữ liệu", "database", "sql",
+                "tổng quan", "báo cáo tài chính cốt lõi", "bảng báo cáo",
+                "kết quả kinh doanh", "báo cáo kết quả", "cân đối kế toán"
+            ]
+        )
 
         selected_facts = []
         seen_concepts = set()
 
-        if target_concepts and all_facts:
-            for c in target_concepts:
+        CORE_METRIC_ORDER = [
+            # 1. Bảng cân đối kế toán (Trang 7-9)
+            "CURRENT_ASSETS",
+            "CASH_AND_EQUIVALENTS",
+            "SHORT_TERM_INVESTMENTS",
+            "SHORT_TERM_RECEIVABLES",
+            "INVENTORIES",
+            "NON_CURRENT_ASSETS",
+            "TOTAL_ASSETS",
+            "CURRENT_LIABILITIES",
+            "NON_CURRENT_LIABILITIES",
+            "LIABILITIES",
+            "TOTAL_LIABILITIES",
+            "EQUITY",
+            "TOTAL_EQUITY",
+            # 2. Báo cáo kết quả hoạt động kinh doanh (Trang 10)
+            "GROSS_REVENUE",
+            "NET_REVENUE",
+            "COGS",
+            "GROSS_PROFIT",
+            "FINANCIAL_INCOME",
+            "FINANCIAL_EXPENSES",
+            "SELLING_EXPENSES",
+            "ADMIN_EXPENSES",
+            "OPERATING_PROFIT",
+            "PROFIT_BEFORE_TAX",
+            "NET_PROFIT",
+            "NET_INCOME",
+            # 3. Báo cáo lưu chuyển tiền tệ (Trang 11-12)
+            "CF_NET_OPERATING",
+            "CASH_FROM_OPERATIONS",
+            "CF_NET_INVESTING",
+            "CF_NET_FINANCING",
+            "CF_NET_CHANGE",
+            "CF_ENDING_CASH",
+        ]
+
+        INCOME_STATEMENT_METRICS = [
+            "GROSS_REVENUE", "NET_REVENUE", "COGS", "GROSS_PROFIT",
+            "FINANCIAL_INCOME", "FINANCIAL_EXPENSES", "SELLING_EXPENSES",
+            "ADMIN_EXPENSES", "OPERATING_PROFIT", "PROFIT_BEFORE_TAX",
+            "NET_PROFIT", "NET_INCOME"
+        ]
+        BALANCE_SHEET_METRICS = [
+            "CURRENT_ASSETS", "CASH_AND_EQUIVALENTS", "SHORT_TERM_INVESTMENTS",
+            "SHORT_TERM_RECEIVABLES", "INVENTORIES", "NON_CURRENT_ASSETS",
+            "TOTAL_ASSETS", "CURRENT_LIABILITIES", "NON_CURRENT_LIABILITIES",
+            "LIABILITIES", "TOTAL_LIABILITIES", "EQUITY", "TOTAL_EQUITY"
+        ]
+        CASH_FLOW_METRICS = [
+            "CF_NET_OPERATING", "CASH_FROM_OPERATIONS", "CF_NET_INVESTING",
+            "CF_NET_FINANCING", "CF_NET_CHANGE", "CF_ENDING_CASH"
+        ]
+
+        if any(w in q_lower for w in ["kết quả hoạt động kinh doanh", "kết quả kinh doanh"]) and all_facts:
+            target_metric_list = INCOME_STATEMENT_METRICS
+            for c in target_metric_list:
                 for f in all_facts:
                     if f.concept == c and f.concept not in seen_concepts:
                         seen_concepts.add(f.concept)
                         selected_facts.append(f)
                         break
-
-        # Nếu là câu hỏi số liệu nhưng chưa tìm thấy theo keyword map, tìm theo từ khoá trong raw_label
-        if is_metric_q and not selected_facts and all_facts:
-            words = [w for w in re.split(r"\s+", q_lower) if len(w) >= 3 and w not in {"năm", "của", "cho", "bao", "nhiêu", "vnm", "vinamilk", "hpg", "fpt"}]
-            if words:
+        elif any(w in q_lower for w in ["bảng cân đối kế toán", "cân đối kế toán"]) and all_facts:
+            target_metric_list = BALANCE_SHEET_METRICS
+            for c in target_metric_list:
                 for f in all_facts:
-                    label = (f.raw_label or "").lower()
-                    if any(w in label for w in words) and f.concept not in seen_concepts:
-                        seen_concepts.add(f.concept)
-                        selected_facts.append(f)
-                        if len(selected_facts) >= 3:
-                            break
-
-        # Fallback: chỉ fallback về các chỉ tiêu cốt lõi NẾU câu hỏi thực sự là hỏi số liệu tài chính
-        if is_metric_q and not selected_facts and all_facts:
-            for core in ["GROSS_PROFIT", "NET_REVENUE", "NET_INCOME", "TOTAL_ASSETS", "TOTAL_EQUITY"]:
-                for f in all_facts:
-                    if f.concept == core and f.concept not in seen_concepts:
+                    if f.concept == c and f.concept not in seen_concepts:
                         seen_concepts.add(f.concept)
                         selected_facts.append(f)
                         break
+        elif any(w in q_lower for w in ["lưu chuyển tiền tệ", "lưu chuyển tiền", "dòng tiền"]) and all_facts:
+            target_metric_list = CASH_FLOW_METRICS
+            for c in target_metric_list:
+                for f in all_facts:
+                    if f.concept == c and f.concept not in seen_concepts:
+                        seen_concepts.add(f.concept)
+                        selected_facts.append(f)
+                        break
+        elif is_all_metrics and all_facts:
+            for c in CORE_METRIC_ORDER:
+                for f in all_facts:
+                    if f.concept == c and f.concept not in seen_concepts:
+                        seen_concepts.add(f.concept)
+                        selected_facts.append(f)
+                        break
+        else:
+            target_concepts = []
+            for phrase, concepts in CONCEPT_KEYWORD_MAP.items():
+                if phrase in q_lower:
+                    target_concepts.extend(concepts)
 
-        selected_facts = selected_facts[:5]
+            if target_concepts and all_facts:
+                for c in target_concepts:
+                    for f in all_facts:
+                        if f.concept == c and f.concept not in seen_concepts:
+                            seen_concepts.add(f.concept)
+                            selected_facts.append(f)
+                            break
+
+            # Nếu là câu hỏi số liệu nhưng chưa tìm thấy theo keyword map, tìm theo từ khoá trong raw_label
+            FINANCIAL_METRIC_KEYWORDS = [
+                "bao nhiêu", "giá trị", "số liệu", "chỉ số", "chỉ tiêu", "mã số",
+                "doanh thu", "lợi nhuận", "tổng tài sản", "tài sản", "vốn chủ",
+                "nợ phải trả", "nợ ngắn hạn", "nợ dài hạn", "chi phí", "dòng tiền",
+                "lưu chuyển tiền", "tiền mặt", "hàng tồn kho", "roe", "roa", "ros",
+                "ebitda", "biên lợi nhuận", "tăng trưởng", "triệu đồng", "tỷ đồng",
+                "nghìn đồng", "vnd", "usd", "%", "cuối kỳ", "đầu kỳ",
+            ]
+            is_metric_q = any(k in q_lower for k in FINANCIAL_METRIC_KEYWORDS)
+
+            if is_metric_q and not selected_facts and all_facts:
+                words = [w for w in re.split(r"\s+", q_lower) if len(w) >= 3 and w not in {"năm", "của", "cho", "bao", "nhiêu", "vnm", "vinamilk", "hpg", "fpt"}]
+                if words:
+                    for f in all_facts:
+                        label = (f.raw_label or "").lower()
+                        if any(w in label for w in words) and f.concept not in seen_concepts:
+                            seen_concepts.add(f.concept)
+                            selected_facts.append(f)
+            # Kiểm tra xem câu hỏi có phải về khoản mục con/chi tiết của Thuyết minh không
+            is_detail_subitem = any(
+                k in q_lower for k in [
+                    "nắm giữ", "cho thuê", "chờ tăng giá", "thù lao", "lương thưởng",
+                    "ngân hàng", "chi tiết", "dự phòng", "xây dựng dở dang", "bên liên quan"
+                ]
+            )
+
+            # Nếu hỏi khoản mục con hoặc không tìm thấy fact khớp trong SQL:
+            # Tự động kích hoạt Fallback sang Vector Search Thuyết minh (Notes)
+            if (not selected_facts or is_detail_subitem) and retriever is not None and not is_all_metrics:
+                logger.info("sql_node: tự động Fallback sang Vector Search Thuyết minh cho query: '%s'", query[:60])
+                try:
+                    results, raw_citations = retriever.retrieve_with_citations(
+                        query=query,
+                        company=company,
+                        year=year,
+                        top_k=5,
+                    )
+                    if raw_citations:
+                        vector_context = formatter.build_context_block(results, max_tokens_estimate=2500)
+                        valid_citations = formatter.filter_valid_citations(raw_citations)
+                        fallback_citations = [
+                            {
+                                "citation_id": c.citation_id,
+                                "block_id": c.block_id,
+                                "source_type": c.source_type,
+                                "page": c.page,
+                                "bbox": c.bbox,
+                                "snippet": c.snippet,
+                                "company": c.company,
+                                "year": c.year,
+                                "confidence": c.confidence,
+                            }
+                            for c in valid_citations
+                        ]
+                        explain_header = (
+                            f"## 📄 Số liệu bóc tách từ Thuyết minh Báo cáo Tài chính ({company} {year})\n"
+                            f"*(Lưu ý: Khoản mục này là số liệu phân rã chi tiết chuyên sâu thuộc Thuyết minh BCTC, "
+                            f"không nằm trong các dòng tổng hợp của 3 Báo cáo cốt lõi. Hãy trả lời trực tiếp dựa trên Thuyết minh và gắn tag trích dẫn [cite_N] tương ứng)*\n\n"
+                        )
+                        return {
+                            "sql_result": snapshot,
+                            "sql_context": explain_header,
+                            "vector_context": vector_context,
+                            "citations": fallback_citations,
+                        }
+                except Exception as e_ret:
+                    logger.warning("sql_node fallback retriever lỗi: %s", e_ret)
+
+            # Fallback về các chỉ tiêu cốt lõi nếu chỉ khi là câu hỏi tổng quát
+            if is_metric_q and not selected_facts and all_facts and is_all_metrics:
+                for core in ["GROSS_PROFIT", "NET_REVENUE", "NET_PROFIT", "NET_INCOME", "TOTAL_ASSETS", "EQUITY", "TOTAL_EQUITY"]:
+                    for f in all_facts:
+                        if f.concept == core and f.concept not in seen_concepts:
+                            seen_concepts.add(f.concept)
+                            selected_facts.append(f)
+                            break
+
         citations_payload = []
-        sql_context_lines = []
+        sql_context_lines = [
+            f"## 📊 Dữ liệu tài chính từ 3 Báo cáo Tài chính cốt lõi (SQL Database: {company} {year})\n"
+        ]
 
         if selected_facts:
-            sql_context_lines.append("## 📊 Số liệu chỉ tiêu tài chính từ BCTC gốc\n")
+            sql_context_lines.append("### Danh sách chỉ tiêu tài chính từ 3 BCTC gốc (kèm tag trích dẫn nguồn):")
             for i, f in enumerate(selected_facts, start=1):
                 cite_tag = f"cite_{i}"
-                fact_page = f.page if (f.page and f.page >= 1) else 10
+                fact_page = f.page if (f.page and f.page >= 1) else 7
+                stmt_name = _get_statement_name_by_page(fact_page)
                 label = f.raw_label or f.concept
                 unit = f.unit or "VND"
 
-                sql_context_lines.append(f"### [{cite_tag}] Báo cáo tài chính — Trang {fact_page}")
-                sql_context_lines.append(f"- **{label} ({f.concept})**: {f.value:,.0f} {unit} (Mã số: {f.standard_code or 'N/A'})\n")
+                sql_context_lines.append(
+                    f"- **{label} ({f.concept})**: {f.value:,.0f} {unit} [{cite_tag}] (Nguồn: {stmt_name} — Trang {fact_page}, Mã số: {f.standard_code or 'N/A'})"
+                )
 
                 citations_payload.append({
                     "citation_id": cite_tag,
-                    "block_id": f"p{fact_page}_fact_{f.concept.lower()}",
+                    "block_id": f.table_id or f"p{fact_page}_b3",
                     "source_type": "statement",
                     "page": fact_page,
-                    "bbox": [0.10, 0.05, 0.90, 0.95],
-                    "snippet": f"Báo cáo tài chính ({company} {year}) — {label}: {f.value:,.0f} {unit} (Trang {fact_page})",
+                    "bbox": None,  # 3 Bảng BCTC cốt lõi OCR lưu theo số trang, không có bbox
+                    "snippet": f"{stmt_name} ({company} {year}) — {label}: {f.value:,.0f} {unit} (Trang {fact_page})",
                     "company": company,
                     "year": year,
                     "confidence": 1.0,
                 })
 
-        snapshot_context = formatter.format_sql_context(snapshot, query_type="snapshot")
-        if sql_context_lines:
-            sql_context = "\n".join(sql_context_lines) + "\n\n" + snapshot_context
-        else:
-            sql_context = snapshot_context
+        ratios = snapshot.get("ratios", {})
+        if ratios:
+            sql_context_lines.append("\n### 13 Chỉ số tài chính chuẩn (Tính toán từ hệ CSDL theo công thức):")
+            for r_name, r_val in ratios.items():
+                sql_context_lines.append(f"- **{r_name}**: {r_val}")
+            sql_context_lines.append(
+                "\n*(Lưu ý: 13 chỉ số tài chính chuẩn là giá trị tính toán tự động từ hệ CSDL, KHÔNG gắn tag citation của Thuyết minh)*"
+            )
+
+        verif = snapshot.get("verification", {})
+        if verif:
+            balanced = "✅ ĐÃ CÂN ĐỐI" if verif.get("is_balanced") == 1 else "❌ CHƯA CÂN ĐỐI"
+            sql_context_lines.append(f"\n### Kiểm toán số học Anti-GIGO: {balanced}")
+            sql_context_lines.append(
+                f"- Tổng kiểm tra: {verif.get('total_checks')} | Đạt: {verif.get('passed_checks')} | Lỗi: {verif.get('failed_checks')}"
+            )
+
+        sql_context = "\n".join(sql_context_lines)
 
         logger.info(
             "sql_node: snapshot OK — %d facts, %d ratios, %d citations",
-            len(snapshot.get("key_facts", {})),
-            len(snapshot.get("ratios", {})),
+            len(selected_facts),
+            len(ratios),
             len(citations_payload),
         )
         return {
@@ -319,11 +506,21 @@ am hiểu sâu Thông tư 200/2014/TT-BTC và chuẩn mực kế toán Việt Na
 **Nguyên tắc bắt buộc:**
 1. Chỉ sử dụng số liệu và dữ kiện được cung cấp trong phần ngữ cảnh bên dưới.
 2. KHÔNG bịa đặt, KHÔNG ngoại suy số liệu hoặc thông tin không có trong ngữ cảnh.
-3. Mỗi khi trích dẫn dữ kiện hoặc số liệu từ báo cáo, gắn tag [cite_N] tương ứng ngay sau câu hoặc dữ kiện đó (Ví dụ: "Lợi nhuận sau thuế đạt 10.000 tỷ đồng [cite_1].").
-4. Nếu không tìm thấy thông tin để trả lời, hãy nói rõ: "Không tìm thấy dữ liệu liên quan trong báo cáo tài chính."
-5. Định dạng số theo chuẩn Việt Nam: 14.352 tỷ đồng (không dùng triệu USD).
+3. **Quy tắc trích dẫn nguồn chuẩn xác (TUYỆT ĐỐI TRÁNH CITE NHẦM):**
+   - **Số liệu thuộc 3 Báo cáo Tài chính cốt lõi** (Bảng Cân đối kế toán Trang 7-9, Báo cáo KQKD Trang 10, Báo cáo LCTT Trang 11-12):
+     Được cung cấp trong phần "Dữ liệu tài chính từ 3 Báo cáo Tài chính cốt lõi (SQL Database)".
+     Mỗi chỉ tiêu đã có sẵn tag trích dẫn `[cite_N]` kèm theo (ví dụ: `[cite_1]`, `[cite_2]`).
+     BẮT BUỘC chỉ sử dụng đúng tag trích dẫn được cấp kèm theo chỉ tiêu đó trong câu trả lời.
+   - **Thuyết minh BCTC (Notes, Trang 13 trở đi)**:
+     Được cung cấp trong phần "Thuyết minh báo cáo tài chính" (Vector Context).
+     CHỈ gắn tag trích dẫn của phần Thuyết minh khi giải thích, phân tích các khoản mục chi tiết thuộc Thuyết minh đó.
+     TUYỆT ĐỐI KHÔNG dùng tag của Thuyết minh (như Trang 53 - Thù lao HĐQT, Trang 25, Trang 15...) để gán cho các chỉ số tài chính cốt lõi trong SQL!
+   - **13 Chỉ số tài chính chuẩn (Financial Ratios: Current ratio, ROA, ROE, ROS, Tỷ số nợ...)**:
+     Đây là các chỉ số tính toán tự động theo công thức chuẩn từ hệ CSDL SQL, KHÔNG gán tag cite của Thuyết minh.
+4. Nếu không tìm thấy thông tin để trả lời, hãy nói rõ: "Không tìm thấy dữ liệu liên quan trong báo cáo tài chính." và hướng dẫn người dùng gõ lại hoặc làm rõ khoản mục. TUYỆT ĐỐI KHÔNG tự bịa số liệu và TUYỆT ĐỐI KHÔNG gắn bất kỳ tag [cite_N] nào khi không tìm thấy dữ liệu.
+5. Định dạng số theo chuẩn Việt Nam: 14.352 tỷ đồng (hoặc 14.352.000.000 VND; không dùng triệu USD).
 6. **Định dạng bảng Markdown:** Khi trình bày bảng biểu (Table), BẮT BUỘC mỗi hàng phải nằm trên MỘT DÒNG RIÊNG BIỆT (dùng ký tự xuống dòng `\\n`). TUYỆT ĐỐI KHÔNG viết các hàng bảng dính liền nhau bằng dấu `||` trên cùng một dòng đơn.
-7. **Quy tắc trích dẫn:** TUYỆT ĐỐI KHÔNG tự tạo danh sách nguồn trích dẫn ở cuối câu trả lời (như "--- Nguồn trích dẫn:" hoặc liệt kê "Block: ..."). Hệ thống sẽ tự quản lý trích dẫn. Chỉ cần chèn tag [cite_N] trực tiếp trong câu văn.
+7. **Không tự tạo danh mục nguồn ở cuối:** TUYỆT ĐỐI KHÔNG tự tạo danh sách nguồn trích dẫn ở cuối câu trả lời (như "--- Nguồn trích dẫn:" hoặc liệt kê "Block: ..."). Hệ thống giao diện sẽ tự động hiển thị mục nguồn. Chỉ cần chèn tag [cite_N] trực tiếp trong câu văn.
 
 {sql_context}
 
@@ -371,8 +568,15 @@ def synthesize_node(state: CopilotState, *, llm: Any) -> dict:
             + "\nHãy sinh lại câu trả lời CHỈ dùng số liệu đúng từ ngữ cảnh."
         )
 
+    raw_history = state.get("messages", [])
+    conversation_history: list[Any] = []
+    if len(raw_history) > 1:
+        # Lấy tối đa 4 tin nhắn trước tin nhắn hiện tại để duy trì ngữ cảnh đa lượt
+        conversation_history = list(raw_history[:-1][-4:])
+
     messages = [
         SystemMessage(content=system_prompt + correction_context),
+        *conversation_history,
         HumanMessage(content=query),
     ]
 
@@ -412,8 +616,20 @@ def fact_verify_node(state: CopilotState, *, sql_svc: Any) -> dict:
     if not draft or "Lỗi khi sinh" in draft:
         return {"fact_check_status": FactCheckStatus.SKIPPED, "fact_check_violations": []}
 
-    # Lấy bảng số liệu chuẩn từ snapshot
+    company = state.get("company") or "VNM"
+    year = state.get("year") or 2025
+
+    # Lấy bảng số liệu chuẩn từ SQL DB (toàn bộ facts của doanh nghiệp + ratios + snapshot)
     key_facts: dict[str, float] = {}
+    if hasattr(sql_svc, "get_all_facts"):
+        try:
+            facts_list = sql_svc.get_all_facts(company=company, year=year)
+            for f in facts_list:
+                if f.value is not None:
+                    key_facts[f.concept] = float(f.value)
+        except Exception as e:
+            logger.warning("fact_verify_node: không thể lấy all_facts: %s", e)
+
     if "key_facts" in sql_result:
         for concept, val in sql_result["key_facts"].items():
             if val is not None:
@@ -439,19 +655,20 @@ def fact_verify_node(state: CopilotState, *, sql_svc: Any) -> dict:
         raw_clean = re.sub(r'[\s\u202f\u00a0]', '', raw_num.strip())
         unit = unit.strip().lower() if unit else ""
         
-        # 1. Bỏ qua các số dễ bị false positive (năm, số trang, số thuyết minh)
-        # VD: 2025, 2024, 12, 105... nếu không có chữ "tỷ", "triệu" đi kèm
-        if not unit and len(raw_clean) <= 4 and raw_clean.isdigit():
+        # 1. Bỏ qua các số dễ bị false positive (năm, số trang, mã số chỉ tiêu TT200)
+        # VD: 2025, 2024, 7, 10, 100, 270, 300, 400... nếu không có chữ "tỷ", "triệu", "%" đi kèm
+        clean_digits = re.sub(r'\D', '', raw_clean)
+        if not unit and len(clean_digits) <= 4:
             continue
 
         # 2. Sinh ra nhiều biến thể (variants) dịch số học do sự nhập nhằng giữa dấu '.' và ','
         # VD: "4,567" -> 4567.0 (VN) hoặc 4.567 (English)
         variants = []
-        try: variants.append(float(re.sub(r'[,.]', '', raw_clean)))  # Bỏ hết dấu
+        try: variants.append(abs(float(re.sub(r'[,.]', '', raw_clean))))  # Bỏ hết dấu
         except: pass
-        try: variants.append(float(raw_clean.replace('.', '').replace(',', '.'))) # Hệ VN
+        try: variants.append(abs(float(raw_clean.replace('.', '').replace(',', '.')))) # Hệ VN
         except: pass
-        try: variants.append(float(raw_clean.replace(',', ''))) # Hệ Anh
+        try: variants.append(abs(float(raw_clean.replace(',', '')))) # Hệ Anh
         except: pass
         
         variants = list(set(variants))
@@ -464,12 +681,13 @@ def fact_verify_node(state: CopilotState, *, sql_svc: Any) -> dict:
             for concept, db_val in key_facts.items():
                 if db_val == 0:
                     continue
+                abs_db = abs(db_val)
                 # Thử khớp ở các scale phổ biến: x1, x1e3, x1e6, x1e9, và x1e-2 (đối với tỷ lệ %)
                 for scale in [1, 1e3, 1e6, 1e9, 1e-2]:
-                    scaled_db = db_val / scale
+                    scaled_db = abs_db / scale
                     if scaled_db == 0:
                         continue
-                    diff_pct = abs((num_variant - scaled_db) / scaled_db)
+                    diff_pct = abs(num_variant - scaled_db) / scaled_db
                     if diff_pct < 0.01:  # Khớp trong dung sai 1% → Quá chuẩn
                         matched_any_variant = True
                         break
@@ -547,6 +765,26 @@ def citation_verify_node(state: CopilotState) -> dict:
     # Chuẩn hoá mọi biến thể tag [cite 1], [cite_1] về dạng chuẩn [[cite_N]]
     normalized_draft = formatter.normalize_citation_tags(draft)
 
+    # Nếu câu trả lời là thông báo không tìm thấy dữ liệu:
+    # Tuyệt đối KHÔNG inject citations và xóa toàn bộ citations rác, đồng thời cung cấp hướng dẫn tương tác
+    if formatter.is_no_data_answer(normalized_draft):
+        logger.info("citation_verify_node: Câu trả lời không có dữ liệu -> Xóa toàn bộ citations và tạo hướng dẫn tương tác.")
+        interactive_msg = (
+            "⚠️ **Không tìm thấy dữ liệu liên quan trong Báo cáo tài chính.**\n\n"
+            "Có thể do câu hỏi chưa có dấu tiếng Việt, viết tắt hoặc tên khoản mục chưa trùng khớp với cách trình bày trong báo cáo.\n\n"
+            "💡 **Gợi ý tra cứu:**\n"
+            "- **Thử gõ lại có dấu tiếng Việt đầy đủ:** Ví dụ *\"Báo cáo kết quả hoạt động kinh doanh\"*, *\"Doanh thu thuần\"*.\n"
+            "- **Các chỉ tiêu cốt lõi:** *Doanh thu thuần*, *Lợi nhuận gộp*, *Lợi nhuận sau thuế*, *Tổng tài sản*, *Vốn chủ sở hữu*, *Nợ phải trả*.\n"
+            "- **Các chỉ số tài chính:** *ROE*, *ROA*, *Current ratio*, *Biên lợi nhuận gộp*.\n"
+            "- **Thuyết minh chuyên sâu:** *Thù lao HĐQT*, *Bất động sản đầu tư*, *Chi phí xây dựng dở dang*, *Vay ngân hàng*.\n\n"
+            "👇 *Bạn có thể gõ lại câu hỏi cụ thể hơn hoặc bấm vào các nút gợi ý bên dưới để tra cứu nhanh nhé!*"
+        )
+        return {
+            "final_answer": interactive_msg,
+            "messages": [AIMessage(content=interactive_msg)],
+            "citations": [],
+        }
+
     # Validate và filter
     valid_citations = formatter.filter_valid_citations(citation_objects)
 
@@ -558,8 +796,10 @@ def citation_verify_node(state: CopilotState) -> dict:
     if cited_ids:
         cited_tags = {f"cite_{i}" for i in cited_ids}
         used_citations = [c for c in valid_citations if c.citation_id in cited_tags]
-        if used_citations:
-            valid_citations = used_citations
+        valid_citations = used_citations
+    else:
+        # Nếu final_answer hoàn toàn không dùng citation nào -> citations phải rỗng
+        valid_citations = []
 
     # Cập nhật lại citations dict (chỉ giữ valid và actually cited)
     final_citations = [
@@ -584,5 +824,25 @@ def citation_verify_node(state: CopilotState) -> dict:
     )
     return {
         "final_answer": final_answer,
+        "messages": [AIMessage(content=final_answer)],
         "citations": final_citations,
+    }
+
+
+# ===========================================================================
+# Clarification Node (Human-in-the-loop / Confirmation)
+# ===========================================================================
+def clarify_node(state: CopilotState) -> dict:
+    """Node: Phản hồi yêu cầu làm rõ câu hỏi khi người dùng hỏi mơ hồ/chưa rõ ràng."""
+    prompt = state.get("clarification_prompt") or (
+        "Câu hỏi của bạn chưa nêu rõ khoản mục tài chính cụ thể cần tra cứu. "
+        "Bạn vui lòng cho biết rõ hơn nội dung bạn muốn xem nhé "
+        "(Ví dụ: Doanh thu thuần, Tổng tài sản, Nguyên giá bất động sản đầu tư nắm giữ cho thuê, Thù lao HĐQT...)?"
+    )
+    return {
+        "final_answer": prompt,
+        "draft_answer": prompt,
+        "messages": [AIMessage(content=prompt)],
+        "citations": [],
+        "fact_check_status": FactCheckStatus.SKIPPED,
     }

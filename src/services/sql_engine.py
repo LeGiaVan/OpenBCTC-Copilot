@@ -60,6 +60,24 @@ class SQLiteFactService:
                 row = cursor.fetchone()
 
             if not row:
+                # Fallback thử các aliases tương đương (ví dụ TOTAL_EQUITY <-> EQUITY, NET_INCOME <-> NET_PROFIT)
+                aliases = {
+                    "TOTAL_EQUITY": ["EQUITY", "OWNERS_EQUITY_TOTAL"],
+                    "EQUITY": ["TOTAL_EQUITY", "OWNERS_EQUITY_TOTAL"],
+                    "TOTAL_LIABILITIES": ["LIABILITIES"],
+                    "LIABILITIES": ["TOTAL_LIABILITIES"],
+                    "NET_INCOME": ["NET_PROFIT"],
+                    "NET_PROFIT": ["NET_INCOME"],
+                    "CASH_FROM_OPERATIONS": ["CF_NET_OPERATING"],
+                    "CF_NET_OPERATING": ["CASH_FROM_OPERATIONS"],
+                }.get(concept.upper(), [])
+                for alt in aliases:
+                    cursor.execute(query, (company.upper(), year, alt, target_period))
+                    row = cursor.fetchone()
+                    if row:
+                        break
+
+            if not row:
                 return None
 
             return FinancialFactDTO.model_validate(dict(row))
@@ -237,27 +255,31 @@ class SQLiteFactService:
 
         Dùng cho node Summary trong LangGraph khi người dùng hỏi tổng quan.
         """
-        key_concepts = [
-            "TOTAL_ASSETS",
-            "TOTAL_EQUITY",
-            "TOTAL_LIABILITIES",
-            "NET_REVENUE",
-            "GROSS_PROFIT",
-            "OPERATING_PROFIT",
-            "NET_INCOME",
-            "CASH_FROM_OPERATIONS",
-        ]
+        key_concept_map = {
+            "TOTAL_ASSETS": ["TOTAL_ASSETS"],
+            "TOTAL_EQUITY": ["TOTAL_EQUITY", "EQUITY", "OWNERS_EQUITY_TOTAL"],
+            "TOTAL_LIABILITIES": ["TOTAL_LIABILITIES", "LIABILITIES"],
+            "NET_REVENUE": ["NET_REVENUE"],
+            "GROSS_PROFIT": ["GROSS_PROFIT"],
+            "OPERATING_PROFIT": ["OPERATING_PROFIT"],
+            "NET_INCOME": ["NET_INCOME", "NET_PROFIT"],
+            "CASH_FROM_OPERATIONS": ["CASH_FROM_OPERATIONS", "CF_NET_OPERATING"],
+        }
 
         facts_snapshot: dict[str, float | None] = {}
         unit_map: dict[str, str] = {}
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            for concept in key_concepts:
-                cursor.execute(
-                    "SELECT value, unit FROM financial_facts WHERE company=? AND year=? AND concept=? LIMIT 1",
-                    (company.upper(), year, concept.upper()),
-                )
-                row = cursor.fetchone()
+            for concept, aliases in key_concept_map.items():
+                row = None
+                for candidate in aliases:
+                    cursor.execute(
+                        "SELECT value, unit FROM financial_facts WHERE company=? AND year=? AND concept=? LIMIT 1",
+                        (company.upper(), year, candidate.upper()),
+                    )
+                    row = cursor.fetchone()
+                    if row:
+                        break
                 facts_snapshot[concept] = row["value"] if row else None
                 if row:
                     unit_map[concept] = row["unit"]

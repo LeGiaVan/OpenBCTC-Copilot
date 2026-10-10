@@ -19,13 +19,15 @@ from langgraph.graph.message import add_messages
 
 
 class QueryIntent(str, Enum):
-    """3 nhóm phân loại câu hỏi tài chính."""
+    """Các nhóm phân loại câu hỏi tài chính."""
     NUMERIC_FACT = "NUMERIC_FACT"
-    """Hỏi số liệu đơn lẻ / chỉ số → chuyển thẳng SQL Tool."""
+    """Hỏi số liệu tổng hợp / chỉ số từ 3 BCTC cốt lõi → chuyển thẳng SQL Tool."""
     NOTE_EXPLANATION = "NOTE_EXPLANATION"
-    """Hỏi chính sách kế toán, thuyết minh, cơ cấu chi tiết → Qdrant Retriever."""
+    """Hỏi chính sách kế toán, thuyết minh, khoản mục con phân rã chi tiết → Qdrant Retriever."""
     DEEP_ANALYSIS = "DEEP_ANALYSIS"
     """Hỏi nguyên nhân, tương quan, phân tích tổng hợp → SQL + Vector + LLM Synthesis."""
+    CLARIFY = "CLARIFY"
+    """Câu hỏi quá mơ hồ hoặc tối nghĩa về khoản mục cần tra cứu → Yêu cầu người dùng làm rõ."""
 
 
 class FactCheckStatus(str, Enum):
@@ -71,7 +73,10 @@ class CopilotState(TypedDict):
     # Phân loại & Định tuyến
     # ------------------------------------------------------------------
     intent: QueryIntent | None
-    """Nhãn phân loại câu hỏi: NUMERIC_FACT | NOTE_EXPLANATION | DEEP_ANALYSIS."""
+    """Nhãn phân loại câu hỏi: NUMERIC_FACT | NOTE_EXPLANATION | DEEP_ANALYSIS | CLARIFY."""
+
+    clarification_prompt: str | None
+    """Câu hỏi làm rõ gửi lại người dùng khi intent là CLARIFY."""
 
     # ------------------------------------------------------------------
     # Kết quả từ Fat Services

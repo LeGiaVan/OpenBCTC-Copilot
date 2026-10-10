@@ -211,3 +211,28 @@ class TestFormatSqlContext:
         result = formatter.format_sql_context(fact, query_type="fact")
         assert "NET_REVENUE" in result
         assert "VND" in result
+
+
+# ---------------------------------------------------------------------------
+# Tests: No Data Answers & Citations Suppression
+# ---------------------------------------------------------------------------
+class TestNoDataCitationsSuppression:
+    def test_is_no_data_answer_detection(self, formatter):
+        assert formatter.is_no_data_answer("Không tìm thấy dữ liệu liên quan trong báo cáo tài chính.") is True
+        assert formatter.is_no_data_answer("Hiện tại không có thông tin về khoản mục này.") is True
+        assert formatter.is_no_data_answer("Doanh thu thuần năm 2025 là 45.886 tỷ đồng.") is False
+
+    def test_no_citations_injected_for_no_data_answer(self, formatter, valid_citations):
+        answer = "Không tìm thấy dữ liệu liên quan trong báo cáo tài chính."
+        result = formatter.inject_citation_tags(answer, valid_citations, auto_inject=True)
+        assert "Nguồn trích dẫn" not in result
+        assert "cite_" not in result
+        assert result == answer
+
+    def test_to_api_payload_empty_for_no_data_answer(self, formatter, valid_citations):
+        answer = "Không tìm thấy dữ liệu liên quan trong báo cáo tài chính."
+        payload = formatter.to_api_payload(answer, valid_citations)
+        assert payload["citations"] == []
+        assert payload["citation_count"] == 0
+        assert payload["has_grounding"] is False
+

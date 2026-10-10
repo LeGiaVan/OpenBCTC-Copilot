@@ -33,10 +33,14 @@ async def chat_endpoint(request: Request, body: ChatRequest):
     
     # SSE Generator để giả lập streaming (cho cảm giác gõ từng chữ trên UI)
     async def sse_generator():
-        words = result["final_answer"].split(" ")
-        for i, word in enumerate(words):
-            yield {"event": "token", "data": word + (" " if i < len(words)-1 else "")}
-            await asyncio.sleep(0.01)  # Giả lập streaming delay
+        import re
+        tokens = re.findall(r'\S+|\s+', result["final_answer"])
+        for token in tokens:
+            yield {
+                "event": "token",
+                "data": json.dumps({"token": token}, ensure_ascii=False)
+            }
+            await asyncio.sleep(0.005)  # Giả lập streaming delay mượt mà
         
         # Gửi metadata citations & status ở sự kiện cuối cùng
         meta = {
@@ -44,7 +48,7 @@ async def chat_endpoint(request: Request, body: ChatRequest):
             "fact_check": result["fact_check_status"].value if result["fact_check_status"] else None,
             "citations": result["citations"]
         }
-        yield {"event": "metadata", "data": json.dumps(meta)}
+        yield {"event": "metadata", "data": json.dumps(meta, ensure_ascii=False)}
         yield {"event": "done", "data": "[DONE]"}
         
     return EventSourceResponse(sse_generator())

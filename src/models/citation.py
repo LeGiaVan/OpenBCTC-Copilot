@@ -9,7 +9,7 @@ class CitationWithBBox(BaseModel):
     block_id: str = Field(description="Định danh block gốc (ví dụ: 'p12_mineru_txt_2')")
     source_type: str = Field(default="note", description="Loại nguồn ('note' | 'statement' | 'report')")
     page: int = Field(description="Số trang PDF chứa bằng chứng trích dẫn")
-    bbox: list[float] = Field(description="Toạ độ [xmin, ymin, xmax, ymax] của đoạn văn bản trên trang PDF")
+    bbox: list[float] | None = Field(default=None, description="Toạ độ [xmin, ymin, xmax, ymax] của đoạn văn bản trên trang PDF (None nếu là 3 bảng BCTC cốt lõi)")
     snippet: str = Field(description="Trích đoạn văn bản ngắn chứng minh cho luận điểm")
     company: str | None = Field(default=None, description="Mã công ty liên quan")
     year: int | None = Field(default=None, description="Năm tài chính liên quan")

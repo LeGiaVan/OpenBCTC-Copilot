@@ -97,7 +97,7 @@ class HybridRetriever:
         self,
         vec_svc: VectorEngineService,
         reranker_model: str = DEFAULT_RERANKER,
-        top_k: int = 5,
+        top_k: int = 2,
         prefetch_multiplier: int = 4,
         use_reranker: bool = True,
     ) -> None:

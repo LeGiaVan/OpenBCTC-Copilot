@@ -3,19 +3,16 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 import logging
 
+from src.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["PDF"])
 
-# Dùng chung biến môi trường hoặc cấu hình (Mặc định Mongo)
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-MONGO_DB = os.getenv("MONGO_DB", "openbctc")
-
 def get_mongo_service():
     try:
         from src.services.mongo_service import MongoGridFSService
-        # Kiểm tra kết nối nhẹ
-        return MongoGridFSService(uri=MONGO_URI, db_name=MONGO_DB)
+        return MongoGridFSService(uri=settings.MONGO_URI, db_name=settings.MONGO_DB)
     except Exception as e:
         logger.warning(f"Không thể khởi tạo MongoGridFSService: {e}")
         return None

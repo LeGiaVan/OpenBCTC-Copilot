@@ -190,6 +190,61 @@ class TestRouteByIntent:
         state = self._state_with_intent(QueryIntent.DEEP_ANALYSIS)
         assert route_by_intent(state) == "hybrid_node"
 
-    def test_none_intent_routes_to_hybrid(self):
-        state = self._state_with_intent(None)
-        assert route_by_intent(state) == "hybrid_node"
+    def test_clarify_routes_to_clarify_node(self):
+        state = self._state_with_intent(QueryIntent.CLARIFY)
+        assert route_by_intent(state) == "clarify_node"
+
+
+# ---------------------------------------------------------------------------
+# Tests: classify_query_llm & clarify_node
+# ---------------------------------------------------------------------------
+class TestLLMRouterAndClarifyNode:
+    def test_classify_query_llm_note_explanation(self):
+        from unittest.mock import MagicMock
+        from src.agents.copilot.router import classify_query_llm
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value.content = (
+            '{"intent": "NOTE_EXPLANATION", "reasoning": "Khoản mục con trong Thuyết minh", "clarification_prompt": null}'
+        )
+
+        result = classify_query_llm(
+            "Nguyên giá trong bất động sản đầu tư nắm giữ cho thuê ngày 31/12 là bao nhiêu",
+            llm=mock_llm,
+            default_company="VNM",
+            default_year=2025,
+        )
+        assert result.intent == QueryIntent.NOTE_EXPLANATION
+        assert result.clarification_prompt is None
+        assert result.company == "VNM"
+        assert result.year == 2025
+
+    def test_classify_query_llm_clarify_trigger(self):
+        from unittest.mock import MagicMock
+        from src.agents.copilot.router import classify_query_llm
+
+        mock_llm = MagicMock()
+        mock_llm.invoke.return_value.content = (
+            '{"intent": "CLARIFY", "reasoning": "Câu hỏi mơ hồ", "clarification_prompt": "Bạn muốn xem khoản mục cụ thể nào?"}'
+        )
+
+        result = classify_query_llm(
+            "Cho tôi xem cái đó đi",
+            llm=mock_llm,
+        )
+        assert result.intent == QueryIntent.CLARIFY
+        assert result.clarification_prompt == "Bạn muốn xem khoản mục cụ thể nào?"
+
+    def test_clarify_node_returns_prompt(self):
+        from src.agents.copilot.nodes import clarify_node
+        from src.agents.copilot.state import FactCheckStatus
+
+        state = {
+            "query": "cái đó",
+            "clarification_prompt": "Bạn muốn hỏi khoản mục nào cụ thể?",
+            "company": "VNM",
+            "year": 2025,
+        }
+        res = clarify_node(state)
+        assert res["final_answer"] == "Bạn muốn hỏi khoản mục nào cụ thể?"
+        assert res["fact_check_status"] == FactCheckStatus.SKIPPED

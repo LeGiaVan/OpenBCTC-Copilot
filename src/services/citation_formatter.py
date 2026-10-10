@@ -46,7 +46,15 @@ class CitationFormatter:
     MIN_BBOX_AREA = 1e-4
 
     def validate_citation(self, citation: CitationWithBBox) -> bool:
-        """Kiểm tra hợp lệ một citation: BBox phải có diện tích, trang phải > 0."""
+        """Kiểm tra hợp lệ một citation: trang phải >= 1; BBox nếu có phải hợp lệ."""
+        if citation.page < 1:
+            logger.warning("Citation %s có số trang không hợp lệ: %d", citation.citation_id, citation.page)
+            return False
+
+        # Các chỉ số tài chính từ 3 bảng BCTC cốt lõi (SQL / OCR) không có bbox, chỉ có số trang
+        if citation.bbox is None:
+            return True
+
         bbox = citation.bbox
         if len(bbox) != 4:
             logger.warning("Citation %s có BBox không hợp lệ (cần 4 giá trị): %s", citation.citation_id, bbox)
@@ -62,9 +70,6 @@ class CitationFormatter:
         if area < self.MIN_BBOX_AREA:
             logger.warning("Citation %s có BBox quá nhỏ (area=%.6f): %s", citation.citation_id, area, bbox)
             return False
-        if citation.page < 1:
-            logger.warning("Citation %s có số trang không hợp lệ: %d", citation.citation_id, citation.page)
-            return False
         return True
 
     def filter_valid_citations(
@@ -79,6 +84,27 @@ class CitationFormatter:
                 len(valid),
             )
         return valid
+
+    @staticmethod
+    def is_no_data_answer(text: str) -> bool:
+        """Kiểm tra xem câu trả lời có phải là thông báo không tìm thấy dữ liệu hay không."""
+        if not text or not text.strip():
+            return True
+        clean = text.lower().strip()
+        no_data_phrases = [
+            "không tìm thấy dữ liệu",
+            "không tìm thấy thông tin",
+            "không có dữ liệu",
+            "không có thông tin",
+            "chưa tìm thấy dữ liệu",
+            "chưa tìm thấy thông tin",
+            "không ghi nhận dữ liệu",
+            "không ghi nhận thông tin",
+            "không thể tìm thấy",
+            "chưa có thông tin",
+            "chưa có dữ liệu",
+        ]
+        return any(phrase in clean for phrase in no_data_phrases)
 
     def inject_citation_tags(
         self,
@@ -97,6 +123,10 @@ class CitationFormatter:
             Câu trả lời đã được gắn citation tags.
         """
         if not citations:
+            return answer
+
+        # Tuyệt đối không auto-inject citation rác khi câu trả lời thông báo không tìm thấy dữ liệu
+        if self.is_no_data_answer(answer):
             return answer
 
         existing_tags = _CITE_TAG_RE.findall(answer)
@@ -153,6 +183,15 @@ class CitationFormatter:
         """
         if filter_invalid:
             citations = self.filter_valid_citations(citations)
+
+        # Nếu là câu trả lời không có dữ liệu -> tuyệt đối không trả về citations và không grounding
+        if self.is_no_data_answer(answer):
+            return {
+                "answer": answer,
+                "citations": [],
+                "citation_count": 0,
+                "has_grounding": False,
+            }
 
         answer_with_tags = self.inject_citation_tags(answer, citations, auto_inject=auto_inject)
 
