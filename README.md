@@ -36,16 +36,16 @@
 
 ```mermaid
 flowchart TD
-    User([Người dùng / Web UI]) -->|1. Gửi câu hỏi BCTC| Gateway[FastAPI Production Gateway]
-    Gateway -->|2. Invoke Multi-Agent State| Graph[LangGraph Orchestrator]
+    User(["Người dùng / Web UI"]) -->|1. Gửi câu hỏi BCTC| Gateway["FastAPI Production Gateway"]
+    Gateway -->|2. Invoke Multi-Agent State| Graph["LangGraph Orchestrator"]
 
     subgraph LangGraph ["Lean Multi-Agent LangGraph Workflow"]
-        Router[Router Node: LLM Intent Classifier]
-        SQLNode[SQL Fact Node: SQLite + Anti-GIGO Engine]
-        VecNode[Vector Retrieval: Qdrant Dense + Sparse + Reranker]
-        SynthNode[Synthesize Node: LLM Drafting with [cite_N]]
-        FactCheck[Fact-Check Node: Deterministic Fact Audit]
-        CiteVerify[Citation Verify Node: Page & BBox Grounding]
+        Router["Router Node: LLM Intent Classifier"]
+        SQLNode["SQL Fact Node: SQLite + Anti-GIGO Engine"]
+        VecNode["Vector Retrieval: Qdrant Dense + Sparse + Reranker"]
+        SynthNode["Synthesize Node: LLM Drafting with Citations"]
+        FactCheck["Fact-Check Node: Deterministic Fact Audit"]
+        CiteVerify["Citation Verify Node: Page & BBox Grounding"]
 
         Router -->|NUMERIC_FACT| SQLNode
         Router -->|NOTE_EXPLANATION| VecNode
@@ -61,9 +61,9 @@ flowchart TD
 
     CiteVerify -->|3. SSE Token Streaming + Citations Metadata| Gateway
     Gateway -->|4. Phản hồi từng Token + BBox Metadata| User
-    User -->|5. Click thẻ [cite_N]| PDFViewer[PDF.js Visual Grounding & Auto BBox Highlight]
-    User -->|6. 👍 Upvote / 👎 Downvote| FeedbackAPI[Feedback Collector API]
-    FeedbackAPI -->|Lưu Audit Log & Gán Score| Langfuse[(Langfuse Observability & Telemetry)]
+    User -->|5. Click thẻ cite_N| PDFViewer["PDF.js Visual Grounding & Auto BBox Highlight"]
+    User -->|6. Upvote / Downvote| FeedbackAPI["Feedback Collector API"]
+    FeedbackAPI -->|Lưu Audit Log & Gán Score| Langfuse[("Langfuse Observability & Telemetry")]
 ```
 
 ---
