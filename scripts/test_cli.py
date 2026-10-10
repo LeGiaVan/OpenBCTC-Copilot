@@ -1,8 +1,13 @@
 import os
 import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+load_dotenv(ROOT_DIR / ".env")
 
 if not any([os.getenv("OPENAI_API_KEY"), os.getenv("GROQ_API_KEY"), os.getenv("OPENROUTER_API_KEY")]):
     print("Vui lòng thiết lập API_KEY (OPENAI / GROQ / OPENROUTER) trong file .env trước khi chạy.")

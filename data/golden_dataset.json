@@ -1,0 +1,1032 @@
+[
+  {
+    "id": "Q01",
+    "category": "NUMERIC_FACT",
+    "query": "Tổng tài sản của Vinamilk năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "TOTAL_ASSETS"
+    ],
+    "expected_values": {
+      "TOTAL_ASSETS": 45952496972636.0
+    },
+    "expected_pages": [
+      8
+    ],
+    "expected_keywords": [
+      "45.952",
+      "tổng tài sản",
+      "đồng"
+    ],
+    "ground_truth_answer": "Tổng tài sản của Vinamilk tại ngày 31/12/2025 là 45.952.496.972.636 VND (khoảng 45.952 tỷ đồng), được ghi nhận tại Bảng Cân đối kế toán (Trang 8)."
+  },
+  {
+    "id": "Q02",
+    "category": "NUMERIC_FACT",
+    "query": "Vốn chủ sở hữu của Vinamilk tại ngày 31/12/2025 đạt bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "EQUITY",
+      "OWNERS_EQUITY_TOTAL"
+    ],
+    "expected_values": {
+      "EQUITY": 29264932288220.0
+    },
+    "expected_pages": [
+      9
+    ],
+    "expected_keywords": [
+      "29.264",
+      "vốn chủ sở hữu",
+      "đồng"
+    ],
+    "ground_truth_answer": "Vốn chủ sở hữu của Vinamilk tại ngày 31/12/2025 là 29.264.932.288.220 VND (khoảng 29.265 tỷ đồng), ghi nhận tại Trang 9 Báo cáo tài chính."
+  },
+  {
+    "id": "Q03",
+    "category": "NUMERIC_FACT",
+    "query": "Nợ phải trả của công ty năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "LIABILITIES"
+    ],
+    "expected_values": {
+      "LIABILITIES": 16687564684416.0
+    },
+    "expected_pages": [
+      9
+    ],
+    "expected_keywords": [
+      "16.687",
+      "nợ phải trả",
+      "đồng"
+    ],
+    "ground_truth_answer": "Tổng nợ phải trả của Vinamilk tại ngày 31/12/2025 là 16.687.564.684.416 VND (khoảng 16.688 tỷ đồng), ghi nhận tại Trang 9 Báo cáo tài chính."
+  },
+  {
+    "id": "Q04",
+    "category": "NUMERIC_FACT",
+    "query": "Tiền và các khoản tương đương tiền cuối năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "CASH_AND_EQUIVALENTS"
+    ],
+    "expected_values": {
+      "CASH_AND_EQUIVALENTS": 1047628845195.0
+    },
+    "expected_pages": [
+      7,
+      12
+    ],
+    "expected_keywords": [
+      "1.047",
+      "tiền và tương đương tiền",
+      "đồng"
+    ],
+    "ground_truth_answer": "Tiền và các khoản tương đương tiền của Vinamilk tại ngày 31/12/2025 là 1.047.628.845.195 VND (khoảng 1.048 tỷ đồng), ghi nhận tại Trang 7 và Báo cáo LCTT Trang 12."
+  },
+  {
+    "id": "Q05",
+    "category": "NUMERIC_FACT",
+    "query": "Tổng tài sản ngắn hạn năm 2025 của Vinamilk là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "CURRENT_ASSETS"
+    ],
+    "expected_values": {
+      "CURRENT_ASSETS": 27309234148199.0
+    },
+    "expected_pages": [
+      7
+    ],
+    "expected_keywords": [
+      "27.309",
+      "tài sản ngắn hạn",
+      "đồng"
+    ],
+    "ground_truth_answer": "Tổng tài sản ngắn hạn của Vinamilk tại ngày 31/12/2025 là 27.309.234.148.199 VND (khoảng 27.309 tỷ đồng), ghi nhận tại Trang 7 BCTC."
+  },
+  {
+    "id": "Q06",
+    "category": "NUMERIC_FACT",
+    "query": "Giá trị hàng tồn kho tại ngày 31/12/2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "INVENTORIES"
+    ],
+    "expected_values": {
+      "INVENTORIES": 4672324223311.0
+    },
+    "expected_pages": [
+      7
+    ],
+    "expected_keywords": [
+      "4.672",
+      "hàng tồn kho",
+      "đồng"
+    ],
+    "ground_truth_answer": "Hàng tồn kho ròng của Vinamilk cuối năm 2025 là 4.672.324.223.311 VND (khoảng 4.672 tỷ đồng), ghi nhận tại Trang 7 BCTC."
+  },
+  {
+    "id": "Q07",
+    "category": "NUMERIC_FACT",
+    "query": "Các khoản đầu tư tài chính ngắn hạn năm 2025 có giá trị bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "SHORT_TERM_INVESTMENTS"
+    ],
+    "expected_values": {
+      "SHORT_TERM_INVESTMENTS": 16380000000000.0
+    },
+    "expected_pages": [
+      7
+    ],
+    "expected_keywords": [
+      "16.380",
+      "đầu tư tài chính ngắn hạn",
+      "đồng"
+    ],
+    "ground_truth_answer": "Đầu tư tài chính ngắn hạn của Vinamilk tại ngày 31/12/2025 là 16.380.000.000.000 VND (16.380 tỷ đồng), chủ yếu là tiền gửi ngân hàng có kỳ hạn, ghi nhận tại Trang 7 BCTC."
+  },
+  {
+    "id": "Q08",
+    "category": "NUMERIC_FACT",
+    "query": "Nợ ngắn hạn của Vinamilk cuối năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "CURRENT_LIABILITIES"
+    ],
+    "expected_values": {
+      "CURRENT_LIABILITIES": 16687366975488.0
+    },
+    "expected_pages": [
+      9
+    ],
+    "expected_keywords": [
+      "16.687",
+      "nợ ngắn hạn",
+      "đồng"
+    ],
+    "ground_truth_answer": "Nợ ngắn hạn của Vinamilk cuối năm 2025 là 16.687.366.975.488 VND (khoảng 16.687 tỷ đồng), ghi nhận tại Trang 9 BCTC."
+  },
+  {
+    "id": "Q09",
+    "category": "NUMERIC_FACT",
+    "query": "Giá trị vay và nợ thuê tài chính ngắn hạn năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "SHORT_TERM_BORROWINGS"
+    ],
+    "expected_values": {
+      "SHORT_TERM_BORROWINGS": 8841000000000.0
+    },
+    "expected_pages": [
+      9
+    ],
+    "expected_keywords": [
+      "8.841",
+      "vay ngắn hạn",
+      "đồng"
+    ],
+    "ground_truth_answer": "Vay ngắn hạn của Vinamilk tại ngày 31/12/2025 là 8.841.000.000.000 VND (8.841 tỷ đồng), ghi nhận tại Trang 9 BCTC."
+  },
+  {
+    "id": "Q10",
+    "category": "NUMERIC_FACT",
+    "query": "Tài sản dài hạn của công ty năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "NON_CURRENT_ASSETS"
+    ],
+    "expected_values": {
+      "NON_CURRENT_ASSETS": 18643262824437.0
+    },
+    "expected_pages": [
+      8
+    ],
+    "expected_keywords": [
+      "18.643",
+      "tài sản dài hạn",
+      "đồng"
+    ],
+    "ground_truth_answer": "Tài sản dài hạn của Vinamilk tại ngày 31/12/2025 là 18.643.262.824.437 VND (khoảng 18.643 tỷ đồng), ghi nhận tại Trang 8 BCTC."
+  },
+  {
+    "id": "Q11",
+    "category": "NUMERIC_FACT",
+    "query": "Doanh thu thuần về bán hàng năm 2025 của Vinamilk là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "NET_REVENUE"
+    ],
+    "expected_values": {
+      "NET_REVENUE": 52991496309263.0
+    },
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "52.991",
+      "doanh thu thuần",
+      "đồng"
+    ],
+    "ground_truth_answer": "Doanh thu thuần về bán hàng và cung cấp dịch vụ năm 2025 của Vinamilk là 52.991.496.309.263 VND (khoảng 52.991 tỷ đồng), ghi nhận tại Trang 10 Báo cáo KQKD."
+  },
+  {
+    "id": "Q12",
+    "category": "NUMERIC_FACT",
+    "query": "Doanh thu bán hàng và cung cấp dịch vụ (doanh thu gộp) năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "GROSS_REVENUE"
+    ],
+    "expected_values": {
+      "GROSS_REVENUE": 53044988379207.0
+    },
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "53.044",
+      "doanh thu",
+      "đồng"
+    ],
+    "ground_truth_answer": "Doanh thu bán hàng và cung cấp dịch vụ năm 2025 của Vinamilk là 53.044.988.379.207 VND (khoảng 53.045 tỷ đồng), ghi nhận tại Trang 10 Báo cáo KQKD."
+  },
+  {
+    "id": "Q13",
+    "category": "NUMERIC_FACT",
+    "query": "Giá vốn hàng bán của Vinamilk trong năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "COGS"
+    ],
+    "expected_values": {
+      "COGS": 29430136161346.0
+    },
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "29.430",
+      "giá vốn",
+      "đồng"
+    ],
+    "ground_truth_answer": "Giá vốn hàng bán và dịch vụ cung cấp năm 2025 của Vinamilk là 29.430.136.161.346 VND (khoảng 29.430 tỷ đồng), ghi nhận tại Trang 10 BCTC."
+  },
+  {
+    "id": "Q14",
+    "category": "NUMERIC_FACT",
+    "query": "Lợi nhuận gộp về bán hàng năm 2025 của Vinamilk là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "GROSS_PROFIT"
+    ],
+    "expected_values": {
+      "GROSS_PROFIT": 23561360147917.0
+    },
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "23.561",
+      "lợi nhuận gộp",
+      "đồng"
+    ],
+    "ground_truth_answer": "Lợi nhuận gộp năm 2025 của Vinamilk đạt 23.561.360.147.917 VND (khoảng 23.561 tỷ đồng), tương ứng biên lợi nhuận gộp 44,46%, ghi nhận tại Trang 10 BCTC."
+  },
+  {
+    "id": "Q15",
+    "category": "NUMERIC_FACT",
+    "query": "Chi phí bán hàng năm 2025 của Vinamilk là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "SELLING_EXPENSES"
+    ],
+    "expected_values": {
+      "SELLING_EXPENSES": 12227930844901.0
+    },
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "12.227",
+      "chi phí bán hàng",
+      "đồng"
+    ],
+    "ground_truth_answer": "Chi phí bán hàng năm 2025 của Vinamilk là 12.227.930.844.901 VND (khoảng 12.228 tỷ đồng), ghi nhận tại Trang 10 Báo cáo KQKD."
+  },
+  {
+    "id": "Q16",
+    "category": "NUMERIC_FACT",
+    "query": "Chi phí quản lý doanh nghiệp năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "ADMIN_EXPENSES"
+    ],
+    "expected_values": {
+      "ADMIN_EXPENSES": 1155129339145.0
+    },
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "1.155",
+      "chi phí quản lý doanh nghiệp",
+      "đồng"
+    ],
+    "ground_truth_answer": "Chi phí quản lý doanh nghiệp năm 2025 của Vinamilk là 1.155.129.339.145 VND (khoảng 1.155 tỷ đồng), ghi nhận tại Trang 10 Báo cáo KQKD."
+  },
+  {
+    "id": "Q17",
+    "category": "NUMERIC_FACT",
+    "query": "Lợi nhuận sau thuế TNDN năm 2025 của Vinamilk là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "NET_PROFIT"
+    ],
+    "expected_values": {
+      "NET_PROFIT": 9359349635629.0
+    },
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "9.359",
+      "lợi nhuận sau thuế",
+      "đồng"
+    ],
+    "ground_truth_answer": "Lợi nhuận sau thuế TNDN năm 2025 của Vinamilk là 9.359.349.635.629 VND (khoảng 9.359 tỷ đồng), ghi nhận tại Trang 10 Báo cáo KQKD."
+  },
+  {
+    "id": "Q18",
+    "category": "NUMERIC_FACT",
+    "query": "Lưu chuyển tiền thuần từ hoạt động kinh doanh năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "CF_NET_OPERATING"
+    ],
+    "expected_values": {
+      "CF_NET_OPERATING": 7690701645261.0
+    },
+    "expected_pages": [
+      11
+    ],
+    "expected_keywords": [
+      "7.690",
+      "hoạt động kinh doanh",
+      "đồng"
+    ],
+    "ground_truth_answer": "Lưu chuyển tiền thuần từ hoạt động kinh doanh năm 2025 của Vinamilk là 7.690.701.645.261 VND (khoảng 7.691 tỷ đồng), ghi nhận tại Trang 11 Báo cáo LCTT."
+  },
+  {
+    "id": "Q19",
+    "category": "NUMERIC_FACT",
+    "query": "Tỷ số thanh toán hiện hành (current ratio) năm 2025 của Vinamilk là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "current_ratio"
+    ],
+    "expected_values": {
+      "current_ratio": 1.6365
+    },
+    "expected_pages": [
+      7,
+      9
+    ],
+    "expected_keywords": [
+      "1.64",
+      "1,64",
+      "current ratio",
+      "thanh toán hiện hành"
+    ],
+    "ground_truth_answer": "Tỷ số thanh toán hiện hành (Current Ratio = Tài sản ngắn hạn / Nợ ngắn hạn) năm 2025 của Vinamilk đạt khoảng 1,64 lần."
+  },
+  {
+    "id": "Q20",
+    "category": "NUMERIC_FACT",
+    "query": "Tỷ suất sinh lời trên vốn chủ sở hữu (ROE) năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NUMERIC_FACT",
+    "expected_concepts": [
+      "roe"
+    ],
+    "expected_values": {
+      "roe": 0.3198
+    },
+    "expected_pages": [
+      9,
+      10
+    ],
+    "expected_keywords": [
+      "31,98%",
+      "31.98%",
+      "ROE",
+      "vốn chủ sở hữu"
+    ],
+    "ground_truth_answer": "Tỷ suất sinh lời trên vốn chủ sở hữu (ROE = Lợi nhuận sau thuế / Vốn chủ sở hữu) năm 2025 của Vinamilk đạt khoảng 31,98%."
+  },
+  {
+    "id": "Q21",
+    "category": "NOTE_EXPLANATION",
+    "query": "Thù lao của các thành viên Hội đồng quản trị và Ban Tổng Giám đốc năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      53
+    ],
+    "expected_keywords": [
+      "Hội đồng quản trị",
+      "thù lao",
+      "Mai Kiều Liên",
+      "Trang 53"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 38 (Trang 53), thù lao của HĐQT và lương, thưởng của Ban Tổng Giám đốc được công bố chi tiết cho từng thành viên, trong đó có Tổng Giám đốc Mai Kiều Liên."
+  },
+  {
+    "id": "Q22",
+    "category": "NOTE_EXPLANATION",
+    "query": "Nguyên giá bất động sản đầu tư nắm giữ để cho thuê tại ngày 31/12/2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      25,
+      26
+    ],
+    "expected_keywords": [
+      "bất động sản đầu tư",
+      "nguyên giá",
+      "cho thuê",
+      "Trang 25"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 12 (Trang 25-26), chi tiết nguyên giá, hao mòn lũy kế và giá trị còn lại của bất động sản đầu tư nắm giữ để chờ tăng giá hoặc cho thuê được trình bày chi tiết."
+  },
+  {
+    "id": "Q23",
+    "category": "NOTE_EXPLANATION",
+    "query": "Chi phí xây dựng cơ bản dở dang năm 2025 gồm những dự án trọng điểm nào?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      24
+    ],
+    "expected_keywords": [
+      "xây dựng cơ bản dở dang",
+      "dự án",
+      "nhà máy",
+      "Trang 24"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 10 (Trang 24), chi phí xây dựng cơ bản dở dang bao gồm các dự án mở rộng nhà máy sữa, trang trại bò sữa và mua sắm máy móc thiết bị chưa hoàn thành."
+  },
+  {
+    "id": "Q24",
+    "category": "NOTE_EXPLANATION",
+    "query": "Chi tiết các khoản vay ngân hàng ngắn hạn của Vinamilk năm 2025 gồm những tổ chức tín dụng nào?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      28,
+      29
+    ],
+    "expected_keywords": [
+      "vay ngắn hạn",
+      "ngân hàng",
+      "lãi suất",
+      "Trang 28"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 16 (Trang 28-29), các khoản vay ngắn hạn chủ yếu là vay tín chấp bằng VND và USD tại các ngân hàng thương mại uy tín nhằm bổ sung vốn lưu động với lãi suất thả nổi cạnh tranh."
+  },
+  {
+    "id": "Q25",
+    "category": "NOTE_EXPLANATION",
+    "query": "Phương pháp khấu hao tài sản cố định hữu hình của Vinamilk đang áp dụng là gì?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      15
+    ],
+    "expected_keywords": [
+      "đường thẳng",
+      "khấu hao",
+      "tài sản cố định",
+      "Trang 15"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 3 (Chính sách kế toán, Trang 15), tài sản cố định hữu hình được khấu hao theo phương pháp đường thẳng dựa trên thời gian sử dụng hữu ích ước tính."
+  },
+  {
+    "id": "Q26",
+    "category": "NOTE_EXPLANATION",
+    "query": "Chính sách kế toán ghi nhận và đánh giá hàng tồn kho của công ty được quy định thế nào?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      14
+    ],
+    "expected_keywords": [
+      "giá gốc",
+      "giá trị thuần có thể thực hiện được",
+      "bình quân gia quyền",
+      "Trang 14"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 3 (Trang 14), hàng tồn kho được xác định theo giá thấp hơn giữa giá gốc và giá trị thuần có thể thực hiện được, tính theo phương pháp bình quân gia quyền."
+  },
+  {
+    "id": "Q27",
+    "category": "NOTE_EXPLANATION",
+    "query": "Cơ cấu chi tiết hàng tồn kho gồm những thành phần nào?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      21
+    ],
+    "expected_keywords": [
+      "nguyên vật liệu",
+      "thành phẩm",
+      "hàng hóa",
+      "dự phòng",
+      "Trang 21"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 7 (Trang 21), hàng tồn kho gồm nguyên liệu vật liệu, công cụ dụng cụ, chi phí sản xuất kinh doanh dở dang, thành phẩm và hàng hóa, cùng khoản dự phòng giảm giá tương ứng."
+  },
+  {
+    "id": "Q28",
+    "category": "NOTE_EXPLANATION",
+    "query": "Vinamilk có những công ty con trực tiếp nào và tỷ lệ sở hữu ra sao?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      18,
+      19,
+      20
+    ],
+    "expected_keywords": [
+      "công ty con",
+      "tỷ lệ sở hữu",
+      "Mộc Châu",
+      "Angkor Dairy",
+      "Trang 18"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 5 (Trang 18-20), Vinamilk sở hữu các công ty con bao gồm Công ty Cổ phần Giống bò sữa Mộc Châu, Angkor Dairy Products Co., Ltd., Công ty TNHH MTV Bò sữa Việt Nam..."
+  },
+  {
+    "id": "Q29",
+    "category": "NOTE_EXPLANATION",
+    "query": "Các giao dịch trọng yếu với các bên liên quan trong năm 2025 gồm những giao dịch gì?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      51,
+      52
+    ],
+    "expected_keywords": [
+      "bên liên quan",
+      "mua hàng",
+      "bán hàng",
+      "cổ tức",
+      "Trang 51"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 37 (Trang 51-52), các giao dịch bên liên quan bao gồm mua bán nguyên vật liệu, thành phẩm với các công ty con/liên kết và chi trả cổ tức cho các cổ đông lớn (như SCIC, F&N)."
+  },
+  {
+    "id": "Q30",
+    "category": "NOTE_EXPLANATION",
+    "query": "Chi tiết chi phí bán hàng gồm những khoản mục chính nào?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      34
+    ],
+    "expected_keywords": [
+      "quảng cáo",
+      "khuyến mại",
+      "vận chuyển",
+      "nhân viên",
+      "Trang 34"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 27 (Trang 34), chi phí bán hàng chiếm tỷ trọng lớn nhất là chi phí dịch vụ quảng cáo, nghiên cứu thị trường, khuyến mại, chi phí vận chuyển và chi phí nhân viên bán hàng."
+  },
+  {
+    "id": "Q31",
+    "category": "NOTE_EXPLANATION",
+    "query": "Tình hình phải thu ngắn hạn của khách hàng và dự phòng nợ phải thu khó đòi?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      20,
+      21
+    ],
+    "expected_keywords": [
+      "phải thu khách hàng",
+      "dự phòng khó đòi",
+      "Trang 20"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 6 (Trang 20-21), các khoản phải thu ngắn hạn của khách hàng được quản lý chặt chẽ với tỷ lệ dự phòng nợ xấu ở mức rất thấp so với quy mô doanh thu."
+  },
+  {
+    "id": "Q32",
+    "category": "NOTE_EXPLANATION",
+    "query": "Ý kiến của kiểm toán viên độc lập KPMG về báo cáo tài chính là gì?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      5,
+      6
+    ],
+    "expected_keywords": [
+      "chấp nhận toàn phần",
+      "trung thực và hợp lý",
+      "KPMG",
+      "Trang 5"
+    ],
+    "ground_truth_answer": "Theo Báo cáo kiểm toán viên độc lập KPMG (Trang 5-6), kiểm toán viên đưa ra ý kiến chấp nhận toàn phần: BCTC đã phản ánh trung thực và hợp lý trên các khía cạnh trọng yếu tình hình tài chính của Vinamilk."
+  },
+  {
+    "id": "Q33",
+    "category": "NOTE_EXPLANATION",
+    "query": "Phải trả người bán ngắn hạn của công ty được phân bổ cho những đối tượng nào?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      27
+    ],
+    "expected_keywords": [
+      "phải trả người bán",
+      "nhà cung cấp",
+      "bên thứ ba",
+      "Trang 27"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 14 (Trang 27), các khoản phải trả người bán ngắn hạn phân tách rõ giữa bên thứ ba và các bên liên quan, chủ yếu là nhà cung cấp sữa nguyên liệu và bao bì."
+  },
+  {
+    "id": "Q34",
+    "category": "NOTE_EXPLANATION",
+    "query": "Quỹ khen thưởng và phúc lợi của Vinamilk trong năm 2025 được ghi nhận ra sao?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      9,
+      31
+    ],
+    "expected_keywords": [
+      "khen thưởng",
+      "phúc lợi",
+      "828 tỷ",
+      "Trang 9"
+    ],
+    "ground_truth_answer": "Theo Bảng Cân đối kế toán Trang 9 và Thuyết minh 19 (Trang 31), số dư Quỹ khen thưởng và phúc lợi cuối năm 2025 là 828.183.786.444 VND."
+  },
+  {
+    "id": "Q35",
+    "category": "NOTE_EXPLANATION",
+    "query": "Chi phí thuế thu nhập doanh nghiệp hiện hành được tính toán với thuế suất bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      36,
+      37
+    ],
+    "expected_keywords": [
+      "thuế suất",
+      "20%",
+      "ưu đãi thuế",
+      "Trang 36"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 32 (Trang 36-37), thuế suất phổ thông là 20%, bên cạnh một số chi nhánh, nhà máy được hưởng thuế suất ưu đãi theo chính sách khuyến khích đầu tư."
+  },
+  {
+    "id": "Q36",
+    "category": "NOTE_EXPLANATION",
+    "query": "Tổng số cổ tức bằng tiền mặt đã chi trả cho cổ đông trong năm 2025 là bao nhiêu?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      12,
+      32
+    ],
+    "expected_keywords": [
+      "cổ tức",
+      "11.181",
+      "tiền mặt",
+      "Trang 12"
+    ],
+    "ground_truth_answer": "Theo Báo cáo LCTT Trang 12 và Thuyết minh 22 (Trang 32), tiền chi trả cổ tức trong năm 2025 đạt 11.181.261.630.750 VND (hơn 11.181 tỷ đồng)."
+  },
+  {
+    "id": "Q37",
+    "category": "NOTE_EXPLANATION",
+    "query": "Báo cáo phân bộ theo khu vực địa lý của Vinamilk thể hiện kết quả kinh doanh trong nước và xuất khẩu ra sao?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      38,
+      39
+    ],
+    "expected_keywords": [
+      "nội địa",
+      "xuất khẩu",
+      "phân bộ",
+      "Trang 38"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 34 (Trang 38-39), doanh thu nội địa vẫn chiếm trên 80% tổng doanh thu, phần còn lại đến từ hoạt động xuất khẩu và các chi nhánh nước ngoài."
+  },
+  {
+    "id": "Q38",
+    "category": "NOTE_EXPLANATION",
+    "query": "Vinamilk quản lý các rủi ro tài chính (rủi ro lãi suất, thanh khoản, ngoại hối) như thế nào?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      41,
+      42,
+      43,
+      44
+    ],
+    "expected_keywords": [
+      "rủi ro tín dụng",
+      "thanh khoản",
+      "ngoại hối",
+      "Trang 41"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 35 (Trang 41-44), công ty áp dụng chính sách kiểm soát tập trung, duy trì lượng tiền mặt dồi dào và sử dụng các công cụ phái sinh/tiền gửi đa dạng để phòng vệ rủi ro."
+  },
+  {
+    "id": "Q39",
+    "category": "NOTE_EXPLANATION",
+    "query": "Trụ sở chính và ngành nghề sản xuất kinh doanh chính của Vinamilk là gì?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      13
+    ],
+    "expected_keywords": [
+      "Số 10 Tân Trào",
+      "chế biến sữa",
+      "Trang 13"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 1 (Trang 13), trụ sở chính đặt tại Số 10 Tân Trào, P. Tân Mỹ, Q.7, TP.HCM; ngành nghề chính là chế biến sữa và các sản phẩm từ sữa."
+  },
+  {
+    "id": "Q40",
+    "category": "NOTE_EXPLANATION",
+    "query": "Có sự kiện trọng yếu nào phát sinh sau ngày kết thúc kỳ kế toán năm 2025 không?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "NOTE_EXPLANATION",
+    "expected_pages": [
+      54
+    ],
+    "expected_keywords": [
+      "sự kiện sau ngày kết thúc",
+      "không có sự kiện",
+      "Trang 54"
+    ],
+    "ground_truth_answer": "Theo Thuyết minh 39 (Trang 54), không có sự kiện trọng yếu nào phát sinh sau ngày 31/12/2025 đòi hỏi phải điều chỉnh hoặc công bố thêm trong BCTC."
+  },
+  {
+    "id": "Q41",
+    "category": "DEEP_ANALYSIS",
+    "query": "Phân tích nguyên nhân biến động lợi nhuận sau thuế năm 2025 so với năm 2024?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "doanh thu thuần",
+      "giá vốn",
+      "chi phí bán hàng",
+      "tăng trưởng"
+    ],
+    "ground_truth_answer": "Lợi nhuận sau thuế năm 2025 đạt 9.359 tỷ đồng nhờ tối ưu hóa giá vốn hàng bán và duy trì hiệu quả chi phí bán hàng, kiểm soát tốt chi phí tài chính."
+  },
+  {
+    "id": "Q42",
+    "category": "DEEP_ANALYSIS",
+    "query": "Đánh giá khả năng thanh toán hiện hành và rủi ro thanh khoản của Vinamilk năm 2025?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      7,
+      8,
+      9
+    ],
+    "expected_keywords": [
+      "current ratio",
+      "1.64",
+      "tiền mặt",
+      "an toàn"
+    ],
+    "ground_truth_answer": "Hệ số thanh toán hiện hành đạt 1,64 lần cùng khoản tiền gửi ngắn hạn 16.380 tỷ đồng cho thấy vị thế thanh khoản cực kỳ vững chắc, rủi ro vỡ nợ gần như bằng không."
+  },
+  {
+    "id": "Q43",
+    "category": "DEEP_ANALYSIS",
+    "query": "Phân tích cơ cấu nguồn vốn: Tỷ lệ nợ trên vốn chủ sở hữu và mức độ an toàn tài chính?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      8,
+      9
+    ],
+    "expected_keywords": [
+      "nợ/vốn chủ",
+      "57%",
+      "đòn bẩy",
+      "an toàn"
+    ],
+    "ground_truth_answer": "Tỷ lệ nợ/vốn chủ sở hữu ở mức 0,57 lần (khoảng 57%) chứng minh Vinamilk sử dụng đòn bẩy tài chính thận trọng, nguồn vốn tài trợ chủ yếu từ vốn chủ sở hữu."
+  },
+  {
+    "id": "Q44",
+    "category": "DEEP_ANALYSIS",
+    "query": "Đánh giá hiệu quả quản lý chi phí bán hàng và chi phí quản lý doanh nghiệp trong năm 2025?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      10,
+      34
+    ],
+    "expected_keywords": [
+      "chi phí bán hàng",
+      "quản lý doanh nghiệp",
+      "tỷ lệ/doanh thu"
+    ],
+    "ground_truth_answer": "Chi phí bán hàng (12.228 tỷ) và chi phí QLDN (1.155 tỷ) chiếm khoảng 25,2% doanh thu thuần, phản ánh sự đầu tư bài bản cho thương hiệu và hệ thống phân phối."
+  },
+  {
+    "id": "Q45",
+    "category": "DEEP_ANALYSIS",
+    "query": "Tại sao dòng tiền thuần từ hoạt động kinh doanh (7.691 tỷ) lại thấp hơn lợi nhuận sau thuế (9.359 tỷ)?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      10,
+      11
+    ],
+    "expected_keywords": [
+      "vốn lưu động",
+      "hàng tồn kho",
+      "phải nộp",
+      "lưu chuyển tiền"
+    ],
+    "ground_truth_answer": "Sự chênh lệch xuất phát từ dòng tiền chi cho vốn lưu động (gia tăng tồn kho 725 tỷ, chi nộp thuế TNDN 1.353 tỷ và biến động các khoản phải trả trong năm)."
+  },
+  {
+    "id": "Q46",
+    "category": "DEEP_ANALYSIS",
+    "query": "Phân tích cấu trúc nợ vay và chi phí lãi vay của công ty trong năm 2025?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      9,
+      10,
+      28
+    ],
+    "expected_keywords": [
+      "vay ngắn hạn",
+      "8.841 tỷ",
+      "lãi vay",
+      "290 tỷ"
+    ],
+    "ground_truth_answer": "Nợ vay chủ yếu là nợ ngắn hạn (8.841 tỷ), chi phí lãi vay khoảng 290 tỷ đồng nhưng được bù đắp vượt trội bởi doanh thu tài chính (1.632 tỷ từ lãi tiền gửi)."
+  },
+  {
+    "id": "Q47",
+    "category": "DEEP_ANALYSIS",
+    "query": "Đánh giá tốc độ giải ngân và tiến độ các dự án xây dựng cơ bản dở dang?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      11,
+      24
+    ],
+    "expected_keywords": [
+      "mua sắm TSCĐ",
+      "giải ngân",
+      "xây dựng dở dang"
+    ],
+    "ground_truth_answer": "Dòng tiền chi mua sắm tài sản cố định trong năm đạt 1.030 tỷ đồng, tập trung cho nâng cấp trang trại sinh thái và tự động hóa dây chuyền nhà máy."
+  },
+  {
+    "id": "Q48",
+    "category": "DEEP_ANALYSIS",
+    "query": "Phân tích xu hướng biên lợi nhuận gộp và biên lợi nhuận ròng của Vinamilk năm 2025?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      10
+    ],
+    "expected_keywords": [
+      "biên lợi nhuận gộp",
+      "44,46%",
+      "biên ròng",
+      "17,66%"
+    ],
+    "ground_truth_answer": "Biên lợi nhuận gộp đạt mức ấn tượng 44,46% và biên lợi nhuận ròng đạt 17,66%, duy trì sức mạnh định giá và vị thế dẫn đầu ngành sữa."
+  },
+  {
+    "id": "Q49",
+    "category": "DEEP_ANALYSIS",
+    "query": "Đánh giá chiến lược quản trị lượng tiền mặt và tiền gửi ngân hàng ngắn hạn?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      7,
+      10
+    ],
+    "expected_keywords": [
+      "tiền gửi",
+      "16.380 tỷ",
+      "doanh thu tài chính",
+      "lãi tiền gửi"
+    ],
+    "ground_truth_answer": "Chiến lược phân bổ 16.380 tỷ đồng vào tiền gửi ngắn hạn giúp Vinamilk thu về hơn 1.571 tỷ đồng tiền lãi, tạo bộ đệm lợi nhuận tài chính vững chãi."
+  },
+  {
+    "id": "Q50",
+    "category": "DEEP_ANALYSIS",
+    "query": "Tổng kết sức khỏe tài chính và triển vọng chi trả cổ tức tổng thể năm 2025?",
+    "company": "VNM",
+    "year": 2025,
+    "expected_intent": "DEEP_ANALYSIS",
+    "expected_pages": [
+      9,
+      10,
+      12
+    ],
+    "expected_keywords": [
+      "sức khỏe tài chính",
+      "cổ tức",
+      "lợi nhuận sau thuế",
+      "bền vững"
+    ],
+    "ground_truth_answer": "Vinamilk sở hữu nền tảng tài chính cực kỳ lành mạnh: nợ thấp, tiền mặt dồi dào, biên lợi nhuận cao và dòng tiền kinh doanh ổn định, đảm bảo khả năng duy trì cổ tức tiền mặt cao trên 11.000 tỷ đồng/năm."
+  }
+]

@@ -17,7 +17,7 @@ from src.services.sql_engine import SQLiteFactService
 from src.services.vector_engine import VectorEngineService
 from src.services.retriever import HybridRetriever
 
-from src.api.routes import chat, pdf, ingest
+from src.api.routes import chat, pdf, ingest, feedback
 from src.services.fact_manager import DynamicFactService
 
 @asynccontextmanager
@@ -108,6 +108,7 @@ from fastapi.responses import HTMLResponse
 app.include_router(chat.router, prefix="/api/v1")
 app.include_router(pdf.router, prefix="/api/v1")
 app.include_router(ingest.router, prefix="/api/v1")
+app.include_router(feedback.router, prefix="/api/v1")
 
 static_dir = Path("src/api/static")
 if static_dir.exists():

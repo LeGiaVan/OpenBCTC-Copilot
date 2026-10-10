@@ -238,4 +238,7 @@ def run_query(
         "fact_check_violations": final_state.get("fact_check_violations", []),
         "company": final_state.get("company"),
         "year": final_state.get("year"),
+        "sql_context": final_state.get("sql_context", ""),
+        "vector_context": final_state.get("vector_context", ""),
+        "sql_result": final_state.get("sql_result"),
     }

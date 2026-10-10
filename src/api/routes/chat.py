@@ -42,8 +42,10 @@ async def chat_endpoint(request: Request, body: ChatRequest):
             }
             await asyncio.sleep(0.005)  # Giả lập streaming delay mượt mà
         
-        # Gửi metadata citations & status ở sự kiện cuối cùng
+        import uuid
+        trace_id = f"trace_{uuid.uuid4().hex[:12]}"
         meta = {
+            "trace_id": trace_id,
             "intent": result["intent"].value if result["intent"] else None,
             "fact_check": result["fact_check_status"].value if result["fact_check_status"] else None,
             "citations": result["citations"]

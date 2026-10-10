@@ -99,13 +99,19 @@ class ClassifyResult(NamedTuple):
 # ---------------------------------------------------------------------------
 # Core classify function
 # ---------------------------------------------------------------------------
-def classify_query(query: str, default_company: str | None = None, default_year: int | None = None) -> ClassifyResult:
+def classify_query(
+    query: str,
+    default_company: str | None = None,
+    default_year: int | None = None,
+    history: list[Any] | None = None,
+) -> ClassifyResult:
     """Phân loại câu hỏi tài chính theo 3 nhóm (Pure Function, không gọi LLM).
 
     Args:
         query: Câu hỏi của người dùng.
         default_company: Công ty mặc định nếu không tìm thấy trong câu hỏi.
         default_year: Năm mặc định nếu không tìm thấy trong câu hỏi.
+        history: Lịch sử tin nhắn ngữ cảnh (tùy chọn).
 
     Returns:
         ClassifyResult(intent, company, year, confidence)

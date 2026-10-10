@@ -213,17 +213,19 @@ flowchart TB
 ### Phase 4: Observability, Evaluation & Hardening (Giám Sát & Đánh Giá)
 *Mục tiêu: Định lượng độ chính xác của hệ thống bằng bộ chỉ số tiêu chuẩn trước khi đưa ra người dùng.*
 
-- [ ] **4.1. Xây dựng Golden Financial Dataset:**
-  - Tập hợp 50 câu hỏi kiểm thử đại diện trên các BCTC thực tế (như HPG 2025, VNM, FPT...):
-    - 20 câu hỏi số liệu cốt lõi (Kiểm tra độ chuẩn xác của SQL Tool - kỳ vọng 100%).
+- [x] **4.1. Xây dựng Golden Financial Dataset:**
+  - Tập hợp 50 câu hỏi kiểm thử đại diện trên BCTC Vinamilk VNM 2025 (`data/golden_dataset.json`):
+    - 20 câu hỏi số liệu cốt lõi (Kiểm tra độ chuẩn xác của SQL Tool - đối chiếu DB benchmark).
     - 20 câu hỏi Thuyết minh BCTC (Kiểm tra độ chính xác của Vector Retrieval & BBox citation).
     - 10 câu hỏi suy luận tổng hợp (Kiểm tra năng lực tổng hợp và phân tích nguyên nhân).
-- [ ] **4.2. Automated Evaluation Pipeline với Ragas & Langfuse:**
-  - **SQL Execution Accuracy:** % câu trả lời số liệu khớp tuyệt đối với DB.
-  - **Faithfulness (Ragas):** Độ trung thực của câu trả lời so với ngữ cảnh trích xuất.
-  - **Citation Precision:** Bounding box và số trang trích dẫn có trúng đích đoạn văn bản chứng minh không.
-- [ ] **4.3. Human-in-the-Loop & Feedback Collector:**
-  - Gắn API cho phép chuyên viên kế toán chấm Upvote / Downvote và gắn cờ (flag) trực tiếp vào Langfuse Trace để tinh chỉnh prompt.
+- [x] **4.2. Automated Evaluation Pipeline với Ragas & Langfuse:**
+  - **SQL Execution Accuracy:** Đo lường độ sai lệch số liệu (<1% tolerance).
+  - **Faithfulness (Ragas/Context-check):** Độ trung thực của câu trả lời so với ngữ cảnh SQL + Vector.
+  - **Citation Precision:** Bounding box và số trang trích dẫn khớp tài liệu nguồn.
+  - **Langfuse Telemetry:** Callback handler và client log score (`src/observability/langfuse_client.py`, `evaluator.py`, `benchmark_runner.py`).
+- [x] **4.3. Human-in-the-Loop & Feedback Collector:**
+  - Backend API: `POST /api/v1/feedback`, `GET /api/v1/feedback/stats`, ghi nhận audit log `logs/user_feedback.jsonl` và đồng bộ Langfuse trace score.
+  - Giao diện Web: Cụm nút 👍 / 👎 trên từng tin nhắn AI kèm modal góp ý chuyên sâu (Sai số liệu, Sai trích dẫn, Thiếu chi tiết, Khác).
 
 ---
 

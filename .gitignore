@@ -9,6 +9,8 @@ venv.bak/
 
 # Database, Storage & Cache Data
 data/*
+!data/golden_dataset.json
+!data/benchmark_report_phase4.json
 !data/samples/
 !data/samples/.gitkeep
 !data/qdrant_storage/

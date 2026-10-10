@@ -1,0 +1,225 @@
+{
+  "timestamp": "2026-10-10 17:36:55",
+  "total_queries": 3,
+  "successful_queries": 3,
+  "total_duration_sec": 83.88,
+  "avg_latency_sec": 18.36,
+  "metrics": {
+    "sql_execution_accuracy": 0.6667,
+    "citation_precision": 0.6667,
+    "faithfulness": 0.9167,
+    "answer_relevancy": 0.4444,
+    "intent_classification_accuracy": 1.0,
+    "overall_benchmark_score": 0.6819
+  },
+  "by_category": {
+    "NUMERIC_FACT": {
+      "count": 3,
+      "avg_overall": 0.6819,
+      "avg_sql": 0.6667,
+      "avg_citation": 0.6667,
+      "avg_faithfulness": 0.9167
+    },
+    "NOTE_EXPLANATION": {
+      "count": 0,
+      "avg_overall": 0.0,
+      "avg_sql": 0.0,
+      "avg_citation": 0.0,
+      "avg_faithfulness": 0.0
+    },
+    "DEEP_ANALYSIS": {
+      "count": 0,
+      "avg_overall": 0.0,
+      "avg_sql": 0.0,
+      "avg_citation": 0.0,
+      "avg_faithfulness": 0.0
+    }
+  },
+  "results": [
+    {
+      "id": "Q01",
+      "category": "NUMERIC_FACT",
+      "query": "Tổng tài sản của Vinamilk năm 2025 là bao nhiêu?",
+      "latency_sec": 3.76,
+      "sql_accuracy": 0.0,
+      "citation_precision": 0.0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.3333,
+      "intent_match": true,
+      "overall_score": 0.1833,
+      "final_answer": "⚠️ **Không tìm thấy dữ liệu liên quan trong Báo cáo tài chính.**\n\nCó thể do câu hỏi chưa có dấu tiếng Việt, viết tắt hoặc tên khoản mục chưa trùng khớp với cách trình bày trong báo cáo.\n\n💡 **Gợi ý tra cứu:**\n- **Thử gõ lại có dấu tiếng Việt đầy đủ:** Ví dụ *\"Báo cáo kết quả hoạt động kinh doanh\"*, *...",
+      "citations_count": 0,
+      "details": {
+        "category": "NUMERIC_FACT",
+        "sql": {
+          "total_expected": 1,
+          "matched_count": 0,
+          "matched_concepts": [],
+          "unmatched_concepts": [
+            {
+              "concept": "TOTAL_ASSETS",
+              "expected": 45952496972636.0
+            }
+          ]
+        },
+        "citation": {
+          "reason": "No citations provided",
+          "expected_pages": [
+            8
+          ]
+        },
+        "faithfulness": {
+          "reason": "Answer explicitly acknowledges lack of data"
+        },
+        "relevancy": {
+          "total_keywords": 3,
+          "matched_keywords": [
+            "tổng tài sản"
+          ],
+          "unmatched_keywords": [
+            "45.952",
+            "đồng"
+          ]
+        },
+        "intent_match": true
+      }
+    },
+    {
+      "id": "Q02",
+      "category": "NUMERIC_FACT",
+      "query": "Vốn chủ sở hữu của Vinamilk tại ngày 31/12/2025 đạt bao nhiêu?",
+      "latency_sec": 8.91,
+      "sql_accuracy": 1.0,
+      "citation_precision": 1.0,
+      "faithfulness": 0.75,
+      "answer_relevancy": 0.3333,
+      "intent_match": true,
+      "overall_score": 0.8958,
+      "final_answer": "Vốn chủ sở hữu của Vinamilk tại ngày 31/12/2025 đạt **29 264 932 288 220 VND** [[cite_1]][[cite_2]]...",
+      "citations_count": 2,
+      "details": {
+        "category": "NUMERIC_FACT",
+        "sql": {
+          "total_expected": 1,
+          "matched_count": 1,
+          "matched_concepts": [
+            "EQUITY"
+          ],
+          "unmatched_concepts": []
+        },
+        "citation": {
+          "total_citations": 2,
+          "correct_citations": 2,
+          "citation_details": [
+            {
+              "citation_id": "cite_1",
+              "page": 9,
+              "is_match": true,
+              "has_source": true
+            },
+            {
+              "citation_id": "cite_2",
+              "page": 9,
+              "is_match": true,
+              "has_source": true
+            }
+          ],
+          "expected_pages": [
+            9
+          ]
+        },
+        "faithfulness": {
+          "claims": [
+            {
+              "claim": "Vốn chủ sở hữu của Vinamilk tại ngày 31/12/2025 đạt 29 264 932 288 220 VND",
+              "supported": true
+            },
+            {
+              "claim": "Citations [[cite_1]][[cite_2]] refer to the context",
+              "supported": true
+            },
+            {
+              "claim": "faithfulness_score 0.95",
+              "supported": false
+            },
+            {
+              "claim": "total_claims 4, supported_claims 4",
+              "supported": true
+            }
+          ],
+          "faithfulness_score": 0.75,
+          "total_claims": 4,
+          "supported_claims": 3,
+          "reason": "Three of the four claims are supported by the context; the faithfulness_score claim is not."
+        },
+        "relevancy": {
+          "total_keywords": 3,
+          "matched_keywords": [
+            "vốn chủ sở hữu"
+          ],
+          "unmatched_keywords": [
+            "29.264",
+            "đồng"
+          ]
+        },
+        "intent_match": true
+      }
+    },
+    {
+      "id": "Q03",
+      "category": "NUMERIC_FACT",
+      "query": "Nợ phải trả của công ty năm 2025 là bao nhiêu?",
+      "latency_sec": 42.41,
+      "sql_accuracy": 1.0,
+      "citation_precision": 1.0,
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.6667,
+      "intent_match": true,
+      "overall_score": 0.9667,
+      "final_answer": "Nợ phải trả của công ty năm 2025 là **16.687.564.684.416 VND** [[cite_1]]....",
+      "citations_count": 1,
+      "details": {
+        "category": "NUMERIC_FACT",
+        "sql": {
+          "total_expected": 1,
+          "matched_count": 1,
+          "matched_concepts": [
+            "LIABILITIES"
+          ],
+          "unmatched_concepts": []
+        },
+        "citation": {
+          "total_citations": 1,
+          "correct_citations": 1,
+          "citation_details": [
+            {
+              "citation_id": "cite_1",
+              "page": 9,
+              "is_match": true,
+              "has_source": true
+            }
+          ],
+          "expected_pages": [
+            9
+          ]
+        },
+        "faithfulness": {
+          "method": "heuristic",
+          "matched_numbers_count": 2,
+          "total_numbers_count": 2
+        },
+        "relevancy": {
+          "total_keywords": 3,
+          "matched_keywords": [
+            "16.687",
+            "nợ phải trả"
+          ],
+          "unmatched_keywords": [
+            "đồng"
+          ]
+        },
+        "intent_match": true
+      }
+    }
+  ]
+}
